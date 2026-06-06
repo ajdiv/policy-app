@@ -1,0 +1,25 @@
+import express from "express";
+import cors from "cors";
+import { config, hasGemini, hasCongressGov } from "./config.js";
+import { initDb } from "./db/client.js";
+import { membersRouter } from "./routes/members.js";
+import { askRouter } from "./routes/ask.js";
+
+initDb();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true, gemini: hasGemini(), congressGov: hasCongressGov() });
+});
+
+app.use("/api/members", membersRouter);
+app.use("/api/ask", askRouter);
+
+app.listen(config.port, () => {
+  console.log(`policy-app server listening on http://localhost:${config.port}`);
+  if (!hasGemini()) console.warn("  [warn] GEMINI_API_KEY not set — /api/ask and embeddings are disabled.");
+  if (!hasCongressGov()) console.warn("  [warn] CONGRESS_GOV_API_KEY not set — Congress member ingestion is disabled.");
+});
