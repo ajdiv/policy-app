@@ -132,7 +132,11 @@ export default function Home() {
                     <Text style={styles.acEmpty}>No matches</Text>
                   ) : (
                     suggestions.map((m) => (
-                      <Pressable key={m.id} style={styles.acItem} onPress={() => pickMember(m)}>
+                      <Pressable
+                        key={m.id}
+                        style={(state) => [styles.acItem, (state as any).hovered && styles.acItemHover]}
+                        onPress={() => pickMember(m)}
+                      >
                         <Text style={styles.acName}>{m.fullName}</Text>
                         <Text style={styles.acMeta}>
                           {roleLabel(m.role)}
@@ -176,7 +180,11 @@ export default function Home() {
               {showStateAC && (
                 <View style={styles.dropdown}>
                   {stateMatches.map((s) => (
-                    <Pressable key={s} style={styles.acItem} onPress={() => pickState(s)}>
+                    <Pressable
+                      key={s}
+                      style={(state) => [styles.acItem, (state as any).hovered && styles.acItemHover]}
+                      onPress={() => pickState(s)}
+                    >
                       <Text style={styles.acName}>{s}</Text>
                     </Pressable>
                   ))}
@@ -312,6 +320,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   acItem: { paddingHorizontal: 14, paddingVertical: 10 },
+  acItemHover: { backgroundColor: colors.evidenceBg },
   acName: { color: colors.title, fontWeight: "700", fontSize: 15 },
   acMeta: { color: colors.muted, fontSize: 13, marginTop: 2 },
   acEmpty: { color: colors.muted, paddingHorizontal: 14, paddingVertical: 10 },
