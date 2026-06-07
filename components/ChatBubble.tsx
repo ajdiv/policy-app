@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { ask, type AskResult, type Citation } from "../lib/api";
+import { ask, type AskResult, type Citation, type ChatTurn } from "../lib/api";
 import { colors, stanceColors, castColors } from "../lib/theme";
 
 const LEGISLATOR_SUGGESTIONS = [
@@ -53,11 +53,19 @@ export function ChatBubble({ memberId, role, name }: { memberId: string; role: s
     const q = (text ?? input).trim();
     if (!q || busy) return;
     setInput("");
+    // Build conversation history from prior answered turns (most recent kept).
+    const history: ChatTurn[] = exchanges
+      .filter((e) => e.answer)
+      .flatMap((e) => [
+        { role: "user" as const, content: e.question },
+        { role: "assistant" as const, content: e.answer!.answer },
+      ])
+      .slice(-8);
     const idx = exchanges.length;
     setExchanges((e) => [...e, { question: q, pending: true }]);
     setBusy(true);
     try {
-      const res = await ask(memberId, q);
+      const res = await ask(memberId, q, history);
       setExchanges((e) => e.map((x, i) => (i === idx ? { ...x, pending: false, answer: res } : x)));
     } catch (err: any) {
       setExchanges((e) => e.map((x, i) => (i === idx ? { ...x, pending: false, error: err.message ?? "Failed" } : x)));

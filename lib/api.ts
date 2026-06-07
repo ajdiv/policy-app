@@ -117,11 +117,16 @@ export async function getMember(id: string): Promise<MemberProfile> {
   return getJson(`/api/members/${encodeURIComponent(id)}`);
 }
 
-export async function ask(memberId: string, question: string): Promise<AskResult> {
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export async function ask(memberId: string, question: string, history: ChatTurn[] = []): Promise<AskResult> {
   const res = await fetch(`${BASE_URL}/api/ask`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ memberId, question }),
+    body: JSON.stringify({ memberId, question, history }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
