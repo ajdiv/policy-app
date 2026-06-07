@@ -7,11 +7,22 @@ import {
   ScrollView,
   ActivityIndicator,
   Linking,
+  Image,
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { getMember, ask, type Member, type AskResult } from "../../lib/api";
+import {
+  getMember,
+  ask,
+  type Member,
+  type AskResult,
+  type Tenure,
+  type Position,
+  type VoteItem,
+  type LegislationItem,
+  type RecordItem,
+} from "../../lib/api";
 import { colors, stanceColors, castColors } from "../../lib/theme";
 
 const LEGISLATOR_SUGGESTIONS = [
@@ -34,6 +45,13 @@ export default function Profile() {
 
   const [member, setMember] = useState<Member | null>(null);
   const [recordCount, setRecordCount] = useState(0);
+  const [headshotUrl, setHeadshotUrl] = useState<string | null>(null);
+  const [tenure, setTenure] = useState<Tenure | null>(null);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [recentVotes, setRecentVotes] = useState<VoteItem[]>([]);
+  const [recentLegislation, setRecentLegislation] = useState<LegislationItem[]>([]);
+  const [executiveOrders, setExecutiveOrders] = useState<RecordItem[]>([]);
+  const [votesAvailable, setVotesAvailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -49,6 +67,13 @@ export default function Profile() {
         const data = await getMember(id);
         setMember(data.member);
         setRecordCount(data.recordCount);
+        setHeadshotUrl(data.headshotUrl);
+        setTenure(data.tenure);
+        setPositions(data.positions ?? []);
+        setRecentVotes(data.recentVotes ?? []);
+        setRecentLegislation(data.recentLegislation ?? []);
+        setExecutiveOrders(data.executiveOrders ?? []);
+        setVotesAvailable(data.votesAvailable);
       } catch (e: any) {
         setLoadError(e.message ?? "Could not load profile.");
       } finally {
@@ -94,14 +119,126 @@ export default function Profile() {
   return (
     <ScrollView contentContainerStyle={styles.page}>
       <View style={styles.shell}>
-        {/* Header */}
-        <Text style={styles.name}>{member.fullName}</Text>
-        <Text style={styles.meta}>
-          {roleLabel(member.role)}
-          {member.state ? ` · ${member.state}` : ""}
-          {member.party ? ` · ${member.party}` : ""}
-          {!isPresident && recordCount > 0 ? ` · ${recordCount.toLocaleString()} recorded votes` : ""}
-        </Text>
+        {/* Profile header */}
+        <View style={styles.profileCard}>
+          <View style={[styles.profileRow, !wide && { flexDirection: "column", alignItems: "flex-start" }]}>
+            {headshotUrl ? (
+              <Image source={{ uri: headshotUrl }} style={styles.headshot} />
+            ) : (
+              <View style={[styles.headshot, styles.headshotFallback]}>
+                <Text style={styles.headshotInitials}>{initials(member.fullName)}</Text>
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.name}>{member.fullName}</Text>
+              <Text style={styles.meta}>
+                {tenure?.roleLabel ?? roleLabel(member.role)}
+                {member.state ? ` · ${member.state}` : ""}
+              </Text>
+              <View style={styles.badgeRow}>
+                {member.party ? (
+                  <View style={[styles.partyBadge, { backgroundColor: partyColor(member.party).bg }]}>
+                    <Text style={[styles.partyBadgeText, { color: partyColor(member.party).text }]}>{member.party}</Text>
+                  </View>
+                ) : null}
+                {tenure ? (
+                  <Text style={styles.factText}>
+                    In office since {tenure.sinceYear} · {tenure.years} yr{tenure.years === 1 ? "" : "s"}
+                  </Text>
+                ) : null}
+                {!isPresident && recordCount > 0 ? (
+                  <Text style={styles.factText}>{recordCount.toLocaleString()} recorded votes</Text>
+                ) : null}
+              </View>
+              {positions.length > 1 && (
+                <View style={styles.positionsWrap}>
+                  <Text style={styles.positionsLabel}>Positions held</Text>
+                  {positions.map((p, i) => (
+                    <Text key={i} style={styles.positionItem}>
+                      • {p.roleLabel} · {p.startYear}–{p.endYear ?? "present"}
+                      {p.current ? "  (current)" : ""}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Recent legislation + votes (or executive orders for the President) */}
+        {isPresident ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Recent executive orders</Text>
+            {executiveOrders.length === 0 ? (
+              <Text style={styles.muted}>No executive orders loaded.</Text>
+            ) : (
+              executiveOrders.slice(0, 10).map((e, i) => (
+                <Pressable key={i} style={styles.listItem} onPress={() => e.url && Linking.openURL(e.url)}>
+                  <Text style={styles.listItemTitle}>{e.title}</Text>
+                  <Text style={styles.listItemMeta}>
+                    {e.ref}
+                    {e.date ? ` · ${fmtDate(e.date)}` : ""}
+                  </Text>
+                </Pressable>
+              ))
+            )}
+          </View>
+        ) : (
+          <View style={[styles.columns, !wide && { flexDirection: "column" }]}>
+            <View style={[styles.colLeft, wide && { flex: 1 }]}>
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Recent legislation</Text>
+                {recentLegislation.length === 0 ? (
+                  <Text style={styles.muted}>No recent legislation found.</Text>
+                ) : (
+                  recentLegislation.map((l, i) => (
+                    <Pressable key={i} style={styles.listItem} onPress={() => l.url && Linking.openURL(l.url)}>
+                      <View style={styles.itemTopRow}>
+                        <View style={[styles.kindBadge, l.kind === "Sponsored" ? styles.kindSponsored : styles.kindCosponsored]}>
+                          <Text style={[styles.kindBadgeText, l.kind === "Sponsored" ? styles.kindSponsoredText : styles.kindCosponsoredText]}>
+                            {l.kind}
+                          </Text>
+                        </View>
+                        {l.date && <Text style={styles.listItemDate}>{fmtDate(l.date)}</Text>}
+                      </View>
+                      <Text style={styles.listItemTitle}>{l.title}</Text>
+                      <Text style={styles.listItemMeta}>
+                        {l.ref}
+                        {l.policyArea ? ` · ${l.policyArea}` : ""}
+                      </Text>
+                    </Pressable>
+                  ))
+                )}
+              </View>
+            </View>
+            <View style={[styles.colRight, wide && { flex: 1 }]}>
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Recent votes</Text>
+                {!votesAvailable ? (
+                  <Text style={styles.muted}>
+                    Recent vote data isn&apos;t available for {member.role === "senator" ? "senators" : "this member"} yet —
+                    our roll-call dataset currently covers the U.S. House (2023+).
+                  </Text>
+                ) : recentVotes.length === 0 ? (
+                  <Text style={styles.muted}>No recent votes found.</Text>
+                ) : (
+                  recentVotes.map((v, i) => (
+                    <Pressable key={i} style={styles.listItem} onPress={() => v.url && Linking.openURL(v.url)}>
+                      <View style={styles.itemTopRow}>
+                        <View style={[styles.voteBadge, { backgroundColor: castColors(v.cast).bg }]}>
+                          <Text style={[styles.voteBadgeText, { color: castColors(v.cast).text }]}>{v.cast}</Text>
+                        </View>
+                        {v.date && <Text style={styles.listItemDate}>{fmtDate(v.date)}</Text>}
+                      </View>
+                      <Text style={styles.listItemTitle}>{v.title}</Text>
+                      <Text style={styles.listItemMeta}>{v.ref}</Text>
+                    </Pressable>
+                  ))
+                )}
+              </View>
+            </View>
+          </View>
+        )}
 
         <View style={[styles.columns, !wide && { flexDirection: "column" }]}>
           {/* LEFT — analysis */}
@@ -289,13 +426,59 @@ function fmtDate(d: string): string {
   const dt = new Date(d);
   return isNaN(dt.getTime()) ? d.slice(0, 10) : dt.toLocaleDateString("en-US");
 }
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
+}
+function partyColor(party: string): { bg: string; text: string } {
+  if (/^D/i.test(party)) return { bg: "#dbeafe", text: "#1d4ed8" };
+  if (/^R/i.test(party)) return { bg: "#fee2e2", text: "#b91c1c" };
+  return { bg: "#e5e7eb", text: "#4b5563" };
+}
 
 const styles = StyleSheet.create({
   page: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 48, alignItems: "center" },
   shell: { width: "100%", maxWidth: 1080, alignSelf: "center" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
   name: { fontSize: 28, fontWeight: "800", color: colors.title },
-  meta: { color: colors.muted, marginTop: 4, marginBottom: 18, fontSize: 15 },
+  meta: { color: colors.muted, marginTop: 4, fontSize: 15 },
+
+  profileCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
+    shadowColor: colors.shadow,
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  profileRow: { flexDirection: "row", alignItems: "center", gap: 18 },
+  headshot: { width: 88, height: 88, borderRadius: 12, backgroundColor: "#eef2ff" },
+  headshotFallback: { alignItems: "center", justifyContent: "center" },
+  headshotInitials: { fontSize: 28, fontWeight: "800", color: colors.primary },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 10, flexWrap: "wrap" },
+  partyBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 },
+  partyBadgeText: { fontWeight: "700", fontSize: 13 },
+  factText: { color: colors.muted, fontSize: 14 },
+  positionsWrap: { marginTop: 12 },
+  positionsLabel: { color: colors.text, fontWeight: "700", fontSize: 13, marginBottom: 4 },
+  positionItem: { color: colors.muted, fontSize: 14, lineHeight: 21 },
+
+  sectionTitle: { fontSize: 17, fontWeight: "800", color: colors.text, marginBottom: 4 },
+  listItem: { paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border },
+  itemTopRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  listItemTitle: { color: colors.title, fontWeight: "600", fontSize: 15, lineHeight: 20 },
+  listItemMeta: { color: colors.muted, fontSize: 13, marginTop: 2 },
+  listItemDate: { color: colors.muted, fontSize: 12, marginLeft: "auto" },
+  kindBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  kindBadgeText: { fontWeight: "700", fontSize: 11 },
+  kindSponsored: { backgroundColor: "#e0e7ff" },
+  kindSponsoredText: { color: "#4338ca" },
+  kindCosponsored: { backgroundColor: "#f3f4f6" },
+  kindCosponsoredText: { color: "#6b7280" },
 
   columns: { flexDirection: "row", gap: 18, alignItems: "flex-start" },
   colLeft: {},

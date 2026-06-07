@@ -169,6 +169,91 @@ export async function fetchBill(
   }
 }
 
+export interface CgTerm {
+  chamber: string;
+  memberType: string; // Representative | Senator | Delegate | ...
+  startYear: number;
+  endYear: number | null;
+  stateName: string | null;
+}
+
+export interface CgMemberDetail {
+  imageUrl: string | null;
+  terms: CgTerm[];
+  partyName: string | null;
+  directOrderName: string | null;
+  nickName: string | null;
+  currentMember: boolean;
+}
+
+/** Full member detail (term history, party history, headshot). Null if not found. */
+export async function fetchMemberDetail(bioguideId: string): Promise<CgMemberDetail | null> {
+  try {
+    const data = await getJson(`/member/${bioguideId}`);
+    const m = data.member;
+    if (!m) return null;
+    const terms: CgTerm[] = (m.terms ?? []).map((t: any) => ({
+      chamber: t.chamber,
+      memberType: t.memberType,
+      startYear: Number(t.startYear),
+      endYear: t.endYear != null ? Number(t.endYear) : null,
+      stateName: t.stateName ?? null,
+    }));
+    const ph = m.partyHistory ?? [];
+    return {
+      imageUrl: m.depiction?.imageUrl ?? null,
+      terms,
+      partyName: ph.length ? ph[ph.length - 1].partyName : null,
+      directOrderName: m.directOrderName ?? null,
+      nickName: m.nickName ?? null,
+      currentMember: !!m.currentMember,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export interface CgLegislation {
+  kind: "Sponsored" | "Cosponsored";
+  congress: number;
+  type: string;
+  number: string;
+  title: string;
+  introducedDate: string | null;
+  policyArea: string | null;
+}
+
+async function fetchLegislation(
+  bioguideId: string,
+  kind: "Sponsored" | "Cosponsored",
+  limit: number,
+): Promise<CgLegislation[]> {
+  const path = kind === "Sponsored" ? "sponsored-legislation" : "cosponsored-legislation";
+  const key = kind === "Sponsored" ? "sponsoredLegislation" : "cosponsoredLegislation";
+  try {
+    const data = await getJson(`/member/${bioguideId}/${path}?limit=${limit}`);
+    const arr: any[] = data[key] ?? [];
+    return arr
+      .filter((x) => x.type && x.number)
+      .map((x) => ({
+        kind,
+        congress: x.congress,
+        type: String(x.type),
+        number: String(x.number),
+        title: x.title ?? `${x.type} ${x.number}`,
+        introducedDate: x.introducedDate ?? null,
+        policyArea: x.policyArea?.name ?? null,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+export const fetchSponsoredLegislation = (bioguideId: string, limit = 10) =>
+  fetchLegislation(bioguideId, "Sponsored", limit);
+export const fetchCosponsoredLegislation = (bioguideId: string, limit = 10) =>
+  fetchLegislation(bioguideId, "Cosponsored", limit);
+
 /** Fetch current members of Congress, paginating up to `max`. */
 export async function fetchCurrentMembers(max = 600): Promise<CgMember[]> {
   if (!hasCongressGov()) {

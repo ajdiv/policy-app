@@ -70,9 +70,50 @@ export async function searchMembers(params: {
   return data.members;
 }
 
-export async function getMember(
-  id: string,
-): Promise<{ member: Member; recordType: string; recordCount: number; records: RecordItem[] }> {
+export interface Position {
+  roleLabel: string;
+  startYear: number;
+  endYear: number | null; // null = present
+  current: boolean;
+}
+
+export interface Tenure {
+  roleLabel: string;
+  sinceYear: number;
+  years: number;
+}
+
+export interface LegislationItem {
+  kind: "Sponsored" | "Cosponsored";
+  title: string;
+  ref: string;
+  date: string | null;
+  url: string | null;
+  policyArea: string | null;
+}
+
+export interface VoteItem {
+  cast: string;
+  title: string;
+  ref: string;
+  date: string | null;
+  url: string | null;
+}
+
+export interface MemberProfile {
+  member: Member;
+  recordType: string;
+  recordCount: number;
+  votesAvailable: boolean;
+  headshotUrl: string | null;
+  tenure: Tenure | null;
+  positions: Position[];
+  recentVotes: VoteItem[];
+  recentLegislation: LegislationItem[];
+  executiveOrders: RecordItem[];
+}
+
+export async function getMember(id: string): Promise<MemberProfile> {
   return getJson(`/api/members/${encodeURIComponent(id)}`);
 }
 
