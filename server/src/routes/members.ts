@@ -3,6 +3,7 @@ import { and, eq, like, or, desc, type SQL } from "drizzle-orm";
 import { db, sqlite } from "../db/client.js";
 import { members, executiveOrders } from "../db/schema.js";
 import { expandNameQuery, resolveState } from "../search/aliases.js";
+import { buildProfile } from "../profile.js";
 
 export const membersRouter = Router();
 
@@ -29,12 +30,12 @@ membersRouter.get("/", (req, res) => {
   res.json({ members: rows });
 });
 
-/** GET /api/members/:id — profile plus the politician's record. */
-membersRouter.get("/:id", (req, res) => {
+/** GET /api/members/:id — full profile: identity, tenure, positions, recent legislation/votes. */
+membersRouter.get("/:id", async (req, res) => {
   const member = db.select().from(members).where(eq(members.id, req.params.id)).get();
   if (!member) return res.status(404).json({ error: "Member not found" });
 
-  let records: Array<{ ref: string; title: string; date: string | null; url: string | null }> = [];
+  let executiveOrders_: Array<{ ref: string; title: string; date: string | null; url: string | null }> = [];
   let recordCount = 0;
   if (member.role === "president") {
     const eos = db
@@ -44,21 +45,26 @@ membersRouter.get("/:id", (req, res) => {
       .orderBy(desc(executiveOrders.signingDate))
       .limit(100)
       .all();
-    records = eos.map((e) => ({
+    executiveOrders_ = eos.map((e) => ({
       ref: e.eoNumber ? `EO ${e.eoNumber}` : `EO ${e.id}`,
       title: e.title,
       date: e.signingDate,
       url: e.htmlUrl,
     }));
-    recordCount = records.length;
+    recordCount = executiveOrders_.length;
   } else {
     recordCount = (sqlite.prepare(`SELECT COUNT(*) AS c FROM votes WHERE member_id = ?`).get(member.id) as { c: number }).c;
   }
+
+  const profile = await buildProfile(member);
 
   res.json({
     member,
     recordType: member.role === "president" ? "executive_order" : "vote",
     recordCount,
-    records,
+    // House roll-call votes are the only vote data we have; flag where it's absent.
+    votesAvailable: member.chamber === "house",
+    executiveOrders: executiveOrders_,
+    ...profile,
   });
 });
