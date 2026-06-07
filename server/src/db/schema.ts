@@ -76,6 +76,17 @@ export const executiveOrders = sqliteTable("executive_orders", {
   topics: text("topics"), // JSON array
 });
 
+/** Authenticated app users (Google SSO). Email is the unique id. */
+export const users = sqliteTable("users", {
+  email: text("email").primaryKey(),
+  name: text("name"),
+  picture: text("picture"),
+  googleSub: text("google_sub"),
+  createdAt: text("created_at"),
+  lastLoginAt: text("last_login_at"),
+});
+
 export type Member = typeof members.$inferSelect;
+export type User = typeof users.$inferSelect;
 export type Bill = typeof bills.$inferSelect;
 export type ExecutiveOrder = typeof executiveOrders.$inferSelect;
