@@ -128,4 +128,22 @@ export async function ask(memberId: string, question: string): Promise<AskResult
   return data as AskResult;
 }
 
+export interface AuthUser {
+  email: string;
+  name: string | null;
+  picture: string | null;
+}
+
+/** Exchange a Google access token for an app session (token + user). */
+export async function loginWithGoogle(accessToken: string): Promise<{ token: string; user: AuthUser }> {
+  const res = await fetch(`${BASE_URL}/api/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accessToken }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Sign-in failed");
+  return data as { token: string; user: AuthUser };
+}
+
 export { BASE_URL };

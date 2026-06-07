@@ -1,9 +1,10 @@
 import express from "express";
 import cors from "cors";
-import { config, hasGemini, hasCongressGov } from "./config.js";
+import { config, hasGemini, hasCongressGov, hasGoogleAuth } from "./config.js";
 import { initDb } from "./db/client.js";
 import { membersRouter } from "./routes/members.js";
 import { askRouter } from "./routes/ask.js";
+import { authRouter } from "./routes/auth.js";
 
 initDb();
 
@@ -12,11 +13,12 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, gemini: hasGemini(), congressGov: hasCongressGov() });
+  res.json({ ok: true, gemini: hasGemini(), congressGov: hasCongressGov(), googleAuth: hasGoogleAuth() });
 });
 
 app.use("/api/members", membersRouter);
 app.use("/api/ask", askRouter);
+app.use("/api/auth", authRouter);
 
 app.listen(config.port, () => {
   console.log(`policy-app server listening on http://localhost:${config.port}`);

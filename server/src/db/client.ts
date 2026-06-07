@@ -103,6 +103,15 @@ export function initDb() {
       topics TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS users (
+      email TEXT PRIMARY KEY,
+      name TEXT,
+      picture TEXT,
+      google_sub TEXT,
+      created_at TEXT,
+      last_login_at TEXT
+    );
+
     -- Source rows behind each embedding vector (one row per embedded record).
     CREATE TABLE IF NOT EXISTS embedding_sources (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

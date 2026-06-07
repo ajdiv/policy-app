@@ -362,6 +362,29 @@ One working end-to-end path proving the whole stack:
 
 ---
 
+## Authentication (Google SSO)
+
+Optional Google sign-in identifies users by **email** (the unique id). It's purely additive —
+the app is fully usable signed-out, and the **Sign in** button stays hidden until a client ID is set.
+
+**Flow:** the web client uses `expo-auth-session` (Google) to get an access token → the backend
+verifies it was issued for *this* OAuth client (audience check) and fetches the verified profile →
+upserts a `users` row (`email` PK, name, picture, google sub) → returns a signed app **JWT** the
+client stores. Endpoints: `POST /api/auth/google`, `GET /api/auth/me`.
+
+**Set it up (web):**
+1. Google Cloud Console → create a project → **OAuth consent screen** (External; scopes
+   `userinfo.email`, `userinfo.profile`, `openid`; add yourself as a test user).
+2. **Credentials → Create OAuth client ID → Web application.** Authorized JavaScript origins **and**
+   redirect URIs: `http://localhost:8081` (add your production URL later). Copy the **Client ID**.
+3. Env:
+   - root `.env`: `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=<client id>`
+   - `server/.env`: `GOOGLE_CLIENT_ID=<same client id>` and `JWT_SECRET=<random string>`
+4. Restart the web app and backend (env is read at startup).
+
+> Native (iOS/Android) sign-in is a later step — it needs additional iOS/Android OAuth clients; the
+> `expo-auth-session` setup already supports adding them.
+
 ## Legal & attribution
 
 - **Congress.gov** data is U.S. government work (public domain); follow their API terms and rate limits.

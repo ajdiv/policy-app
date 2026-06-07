@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { searchMembers, type Member } from "../lib/api";
 import { matchStates } from "../lib/usStates";
 import { colors } from "../lib/theme";
+import { AuthButton } from "../components/AuthButton";
 
 const CHAMBERS = [
   { key: "", label: "All" },
@@ -112,6 +113,9 @@ export default function Home() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.shell}>
+        <View style={styles.topBar}>
+          <AuthButton />
+        </View>
         <Text style={styles.title}>Political Voting Record Analyzer</Text>
         <Text style={styles.subtitle}>AI-powered analysis of how politicians actually voted</Text>
 
@@ -253,6 +257,7 @@ function roleLabel(role: string): string {
 const styles = StyleSheet.create({
   page: { paddingHorizontal: 16, paddingBottom: 48, alignItems: "center" },
   shell: { width: "100%", maxWidth: 860, alignSelf: "center" },
+  topBar: { flexDirection: "row", justifyContent: "flex-end", marginBottom: 4, minHeight: 36 },
   title: { fontSize: 34, fontWeight: "800", color: colors.title, textAlign: "center", letterSpacing: -0.5 },
   subtitle: { fontSize: 16, color: colors.subtitle, textAlign: "center", marginTop: 8, marginBottom: 24 },
   searchCard: {
