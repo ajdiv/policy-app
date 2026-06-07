@@ -114,7 +114,7 @@ export async function buildProfile(member: Member): Promise<ProfileData> {
        JOIN bills b ON b.id = r.bill_id
        WHERE v.member_id = ? AND v.cast IN ('Yea','Nay')
        ORDER BY r.date DESC
-       LIMIT 8`,
+       LIMIT 30`,
     )
     .all(member.id) as ProfileData["recentVotes"];
 
@@ -122,8 +122,8 @@ export async function buildProfile(member: Member): Promise<ProfileData> {
   let recentLegislation: ProfileData["recentLegislation"] = [];
   if (member.role !== "president") {
     const [sponsored, cosponsored] = await Promise.all([
-      fetchSponsoredLegislation(member.id, 10),
-      fetchCosponsoredLegislation(member.id, 10),
+      fetchSponsoredLegislation(member.id, 20),
+      fetchCosponsoredLegislation(member.id, 20),
     ]);
     recentLegislation = [...sponsored, ...cosponsored]
       .map((x) => ({
@@ -135,7 +135,7 @@ export async function buildProfile(member: Member): Promise<ProfileData> {
         policyArea: x.policyArea,
       }))
       .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
-      .slice(0, 8);
+      .slice(0, 30);
   }
 
   return {

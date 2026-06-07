@@ -52,6 +52,9 @@ export default function Profile() {
   const [recentLegislation, setRecentLegislation] = useState<LegislationItem[]>([]);
   const [executiveOrders, setExecutiveOrders] = useState<RecordItem[]>([]);
   const [votesAvailable, setVotesAvailable] = useState(false);
+  const [legVisible, setLegVisible] = useState(5);
+  const [votesVisible, setVotesVisible] = useState(5);
+  const [eoVisible, setEoVisible] = useState(5);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -62,6 +65,9 @@ export default function Profile() {
 
   useEffect(() => {
     if (!id) return;
+    setLegVisible(5);
+    setVotesVisible(5);
+    setEoVisible(5);
     (async () => {
       try {
         const data = await getMember(id);
@@ -172,7 +178,7 @@ export default function Profile() {
             {executiveOrders.length === 0 ? (
               <Text style={styles.muted}>No executive orders loaded.</Text>
             ) : (
-              executiveOrders.slice(0, 10).map((e, i) => (
+              executiveOrders.slice(0, eoVisible).map((e, i) => (
                 <Pressable key={i} style={styles.listItem} onPress={() => e.url && Linking.openURL(e.url)}>
                   <Text style={styles.listItemTitle}>{e.title}</Text>
                   <Text style={styles.listItemMeta}>
@@ -182,6 +188,7 @@ export default function Profile() {
                 </Pressable>
               ))
             )}
+            {loadMore(executiveOrders.length, eoVisible, () => setEoVisible((v) => v + 5))}
           </View>
         ) : (
           <View style={[styles.columns, !wide && { flexDirection: "column" }]}>
@@ -191,7 +198,7 @@ export default function Profile() {
                 {recentLegislation.length === 0 ? (
                   <Text style={styles.muted}>No recent legislation found.</Text>
                 ) : (
-                  recentLegislation.map((l, i) => (
+                  recentLegislation.slice(0, legVisible).map((l, i) => (
                     <Pressable key={i} style={styles.listItem} onPress={() => l.url && Linking.openURL(l.url)}>
                       <View style={styles.itemTopRow}>
                         <View style={[styles.kindBadge, l.kind === "Sponsored" ? styles.kindSponsored : styles.kindCosponsored]}>
@@ -209,6 +216,7 @@ export default function Profile() {
                     </Pressable>
                   ))
                 )}
+                {loadMore(recentLegislation.length, legVisible, () => setLegVisible((v) => v + 5))}
               </View>
             </View>
             <View style={[styles.colRight, wide && { flex: 1 }]}>
@@ -222,7 +230,7 @@ export default function Profile() {
                 ) : recentVotes.length === 0 ? (
                   <Text style={styles.muted}>No recent votes found.</Text>
                 ) : (
-                  recentVotes.map((v, i) => (
+                  recentVotes.slice(0, votesVisible).map((v, i) => (
                     <Pressable key={i} style={styles.listItem} onPress={() => v.url && Linking.openURL(v.url)}>
                       <View style={styles.itemTopRow}>
                         <View style={[styles.voteBadge, { backgroundColor: castColors(v.cast).bg }]}>
@@ -235,6 +243,7 @@ export default function Profile() {
                     </Pressable>
                   ))
                 )}
+                {votesAvailable && loadMore(recentVotes.length, votesVisible, () => setVotesVisible((v) => v + 5))}
               </View>
             </View>
           </View>
@@ -446,6 +455,15 @@ function renderAnswerWithLinks(text: string, citations: AskResult["citations"]) 
     return <Text key={i}>{part}</Text>;
   });
 }
+/** A "Load more (N more)" button shown when a list has more rows than are visible. */
+function loadMore(total: number, visible: number, onMore: () => void) {
+  if (total <= visible) return null;
+  return (
+    <Pressable style={styles.loadMoreBtn} onPress={onMore}>
+      <Text style={styles.loadMoreText}>Load more ({total - visible} more)</Text>
+    </Pressable>
+  );
+}
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
@@ -489,6 +507,8 @@ const styles = StyleSheet.create({
   positionItem: { color: colors.muted, fontSize: 14, lineHeight: 21 },
 
   sectionTitle: { fontSize: 17, fontWeight: "800", color: colors.text, marginBottom: 4 },
+  loadMoreBtn: { marginTop: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: "#eef2ff", alignItems: "center" },
+  loadMoreText: { color: colors.primary, fontWeight: "700", fontSize: 14 },
   listItem: { paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border },
   itemTopRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
   listItemTitle: { color: colors.title, fontWeight: "600", fontSize: 15, lineHeight: 20 },
