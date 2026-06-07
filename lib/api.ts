@@ -21,17 +21,32 @@ export interface RecordItem {
 }
 
 export interface Citation {
-  type: string;
+  index: number;
+  type: "vote" | "executive_order";
   ref: string;
   title: string;
   date: string | null;
   url: string | null;
+  cast?: string;
+  party?: string | null;
+  direction?: "supportive" | "opposed" | "neutral";
+  why?: string;
+}
+
+export interface Stance {
+  label: string;
+  confidence: number;
+  supportive: number;
+  opposed: number;
+  total: number;
 }
 
 export interface AskResult {
+  question: string;
   answer: string;
+  stance: Stance | null;
   citations: Citation[];
-  member: { id: string; fullName: string; role: string };
+  member: { id: string; fullName: string; role: string; party: string | null; state: string | null };
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -55,7 +70,7 @@ export async function searchMembers(params: {
 
 export async function getMember(
   id: string,
-): Promise<{ member: Member; recordType: string; records: RecordItem[] }> {
+): Promise<{ member: Member; recordType: string; recordCount: number; records: RecordItem[] }> {
   return getJson(`/api/members/${encodeURIComponent(id)}`);
 }
 

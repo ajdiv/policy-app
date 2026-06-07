@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { and, eq, like, desc } from "drizzle-orm";
-import { db } from "../db/client.js";
+import { db, sqlite } from "../db/client.js";
 import { members, executiveOrders } from "../db/schema.js";
 
 export const membersRouter = Router();
@@ -27,6 +27,7 @@ membersRouter.get("/:id", (req, res) => {
   if (!member) return res.status(404).json({ error: "Member not found" });
 
   let records: Array<{ ref: string; title: string; date: string | null; url: string | null }> = [];
+  let recordCount = 0;
   if (member.role === "president") {
     const eos = db
       .select()
@@ -41,7 +42,15 @@ membersRouter.get("/:id", (req, res) => {
       date: e.signingDate,
       url: e.htmlUrl,
     }));
+    recordCount = records.length;
+  } else {
+    recordCount = (sqlite.prepare(`SELECT COUNT(*) AS c FROM votes WHERE member_id = ?`).get(member.id) as { c: number }).c;
   }
 
-  res.json({ member, recordType: member.role === "president" ? "executive_order" : "vote", records });
+  res.json({
+    member,
+    recordType: member.role === "president" ? "executive_order" : "vote",
+    recordCount,
+    records,
+  });
 });

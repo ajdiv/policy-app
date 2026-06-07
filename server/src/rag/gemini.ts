@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, type Schema } from "@google/genai";
 import { config, hasGemini } from "../config.js";
 
 let client: GoogleGenAI | null = null;
@@ -46,6 +46,18 @@ export async function generate(prompt: string): Promise<string> {
     ai().models.generateContent({ model: config.generationModel, contents: prompt }),
   );
   return res.text ?? "";
+}
+
+/** Generate a JSON object matching `schema`. Retries transient errors. */
+export async function generateStructured<T>(prompt: string, schema: Schema): Promise<T> {
+  const res = await withRetry(() =>
+    ai().models.generateContent({
+      model: config.generationModel,
+      contents: prompt,
+      config: { responseMimeType: "application/json", responseSchema: schema },
+    }),
+  );
+  return JSON.parse(res.text ?? "{}") as T;
 }
 
 /** Retry on transient 503 (overloaded) / 429 (rate limit) with backoff. */

@@ -24,6 +24,16 @@ export const db = drizzle(sqlite, { schema });
  * with schema.ts) so there's no separate migration step for the MVP, plus the
  * sqlite-vec virtual table which Drizzle can't express.
  */
+/** Add any missing columns to an existing table (idempotent). */
+function ensureColumns(table: string, cols: Record<string, string>) {
+  const existing = new Set(
+    (sqlite.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((r) => r.name),
+  );
+  for (const [name, type] of Object.entries(cols)) {
+    if (!existing.has(name)) sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${type}`);
+  }
+}
+
 export function initDb() {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS members (
@@ -47,22 +57,30 @@ export function initDb() {
       bill_type TEXT,
       number INTEGER,
       title TEXT NOT NULL,
+      policy_area TEXT,
       summary TEXT,
       status TEXT,
       sponsor_id TEXT,
       subjects TEXT,
-      introduced_date TEXT
+      introduced_date TEXT,
+      url TEXT
     );
 
     CREATE TABLE IF NOT EXISTS rollcalls (
       id TEXT PRIMARY KEY,
       congress INTEGER,
+      session INTEGER,
       chamber TEXT,
       number INTEGER,
       date TEXT,
       question TEXT,
       result TEXT,
-      bill_id TEXT
+      vote_type TEXT,
+      legislation_type TEXT,
+      legislation_number TEXT,
+      bill_id TEXT,
+      party_totals TEXT,
+      url TEXT
     );
 
     CREATE TABLE IF NOT EXISTS votes (
@@ -97,7 +115,21 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_members_chamber ON members(chamber);
     CREATE INDEX IF NOT EXISTS idx_eo_president ON executive_orders(president_id);
     CREATE INDEX IF NOT EXISTS idx_votes_member ON votes(member_id);
+    CREATE INDEX IF NOT EXISTS idx_votes_rollcall ON votes(rollcall_id);
+    CREATE INDEX IF NOT EXISTS idx_rollcalls_bill ON rollcalls(bill_id);
   `);
+
+  // Additive migrations: bring an older Phase 1 DB up to the current schema
+  // without dropping data (CREATE TABLE IF NOT EXISTS won't add new columns).
+  ensureColumns("bills", { policy_area: "TEXT", url: "TEXT" });
+  ensureColumns("rollcalls", {
+    session: "INTEGER",
+    vote_type: "TEXT",
+    legislation_type: "TEXT",
+    legislation_number: "TEXT",
+    party_totals: "TEXT",
+    url: "TEXT",
+  });
 
   // sqlite-vec virtual table. Its implicit `rowid` is set equal to
   // embedding_sources.id at insert time (bound as BigInt — vec0 requires an

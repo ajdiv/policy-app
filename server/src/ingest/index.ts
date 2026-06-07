@@ -1,11 +1,10 @@
-import { eq } from "drizzle-orm";
-import { config, hasGemini, hasCongressGov } from "../config.js";
+import { hasCongressGov } from "../config.js";
 import { db, initDb, sqlite } from "../db/client.js";
 import { members, executiveOrders } from "../db/schema.js";
 import { fetchExecutiveOrders } from "../sources/federalRegister.js";
 import { fetchCurrentMembers } from "../sources/congressGov.js";
-import { embed } from "../rag/gemini.js";
-import { upsertEmbedding } from "../rag/embeddingStore.js";
+import { embedPending, type EmbedRow } from "./embedUtil.js";
+import { ingestHouseVotes } from "./votes.js";
 
 /** Presidents to ingest (Federal Register slugs). Override with INGEST_PRESIDENTS. */
 const PRESIDENT_SLUGS = (process.env.INGEST_PRESIDENTS ?? "donald-trump")
@@ -13,10 +12,6 @@ const PRESIDENT_SLUGS = (process.env.INGEST_PRESIDENTS ?? "donald-trump")
   .map((s) => s.trim())
   .filter(Boolean);
 const MAX_EOS = Number(process.env.INGEST_MAX_EOS ?? 300);
-const EMBED_BATCH = 50;
-// Delay between embedding batches. Free tier = 100 requests/min (per item),
-// so 50 items / 60s stays comfortably under. Lower it (e.g. 0) on a paid tier.
-const EMBED_DELAY_MS = Number(process.env.EMBED_DELAY_MS ?? 60000);
 
 async function ingestExecutiveOrders() {
   for (const slug of PRESIDENT_SLUGS) {
@@ -100,76 +95,40 @@ async function ingestMembers() {
 }
 
 /** Embed every executive order that doesn't yet have an embedding. */
-async function embedRecords() {
-  if (!hasGemini()) {
-    console.warn(
-      "\n[embed] GEMINI_API_KEY not set — skipping embeddings. Data is loaded, but semantic search/AI answers won't work until you set the key and re-run `npm run ingest`.",
-    );
-    return;
-  }
+async function embedExecutiveOrders() {
   const pending = sqlite
     .prepare(
-      `SELECT eo.id, eo.eo_number AS eoNumber, eo.title, eo.abstract, eo.topics
+      `SELECT eo.id AS id, eo.title AS title, eo.abstract AS abstract, eo.topics AS topics
        FROM executive_orders eo
-       LEFT JOIN embedding_sources s
-         ON s.source_type = 'executive_order' AND s.source_id = eo.id
+       LEFT JOIN embedding_sources s ON s.source_type = 'executive_order' AND s.source_id = eo.id
        WHERE s.id IS NULL`,
     )
-    .all() as Array<{ id: string; eoNumber: number | null; title: string; abstract: string | null; topics: string | null }>;
-
-  console.log(`\n[embed] ${pending.length} executive orders need embeddings.`);
-  for (let i = 0; i < pending.length; i += EMBED_BATCH) {
-    const batch = pending.slice(i, i + EMBED_BATCH);
-    const texts = batch.map((r) => {
-      const topics = r.topics ? (JSON.parse(r.topics) as string[]).join(", ") : "";
-      return [r.title, r.abstract ?? "", topics].filter(Boolean).join("\n");
-    });
-    const vectors = await embedBatchWithRetry(texts);
-    batch.forEach((r, j) => {
-      const v = vectors[j];
-      if (v && v.length) upsertEmbedding("executive_order", r.id, texts[j], v);
-    });
-    console.log(`[embed] Embedded ${Math.min(i + EMBED_BATCH, pending.length)}/${pending.length}`);
-    // Pace to stay under the free-tier limit (100 embed requests/min, counted per item).
-    if (i + EMBED_BATCH < pending.length) await sleep(EMBED_DELAY_MS);
-  }
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/** Embed a batch, retrying on 429 using the delay the API suggests. */
-async function embedBatchWithRetry(texts: string[], attempt = 0): Promise<number[][]> {
-  try {
-    return await embed(texts);
-  } catch (e: any) {
-    if (e?.status === 429 && attempt < 6) {
-      const match = /"retryDelay":"(\d+)s"/.exec(String(e?.message ?? ""));
-      const waitMs = (match ? Number(match[1]) : 60) * 1000 + 1500;
-      console.warn(
-        `[embed] rate limited (free tier). Waiting ${Math.round(waitMs / 1000)}s then retrying…`,
-      );
-      await sleep(waitMs);
-      return embedBatchWithRetry(texts, attempt + 1);
-    }
-    throw e;
-  }
+    .all() as Array<{ id: string; title: string; abstract: string | null; topics: string | null }>;
+  const rows: EmbedRow[] = pending.map((r) => {
+    const topics = r.topics ? (JSON.parse(r.topics) as string[]).join(", ") : "";
+    return { sourceId: r.id, text: [r.title, r.abstract ?? "", topics].filter(Boolean).join("\n") };
+  });
+  await embedPending("executive_order", rows);
 }
 
 async function main() {
   initDb();
   console.log("=== policy-app ingestion ===");
-  console.log(`Presidents: ${PRESIDENT_SLUGS.join(", ")} | max EOs each: ${MAX_EOS}`);
 
   await ingestExecutiveOrders();
   await ingestMembers();
-  await embedRecords();
+  await ingestHouseVotes();
+  await embedExecutiveOrders();
 
-  const counts = {
-    members: (sqlite.prepare("SELECT COUNT(*) AS c FROM members").get() as any).c,
-    executiveOrders: (sqlite.prepare("SELECT COUNT(*) AS c FROM executive_orders").get() as any).c,
-    embeddings: (sqlite.prepare("SELECT COUNT(*) AS c FROM embedding_sources").get() as any).c,
-  };
-  console.log("\n=== done ===", counts);
+  const c = (q: string) => (sqlite.prepare(q).get() as any).c;
+  console.log("\n=== done ===", {
+    members: c("SELECT COUNT(*) AS c FROM members"),
+    executiveOrders: c("SELECT COUNT(*) AS c FROM executive_orders"),
+    bills: c("SELECT COUNT(*) AS c FROM bills"),
+    rollcalls: c("SELECT COUNT(*) AS c FROM rollcalls"),
+    votes: c("SELECT COUNT(*) AS c FROM votes"),
+    embeddings: c("SELECT COUNT(*) AS c FROM embedding_sources"),
+  });
 }
 
 main().catch((err) => {

@@ -1,17 +1,23 @@
 import { Stack } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { StyleSheet } from "react-native";
+import { colors } from "../lib/theme";
 
 export default function RootLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: "#1d3557" },
-        headerTintColor: "#fff",
-        headerTitleStyle: { fontWeight: "700" },
-        contentStyle: { backgroundColor: "#f5f6f8" },
-      }}
-    >
-      <Stack.Screen name="index" options={{ title: "policy-app" }} />
-      <Stack.Screen name="members/[id]" options={{ title: "Profile" }} />
-    </Stack>
+    <LinearGradient colors={colors.bgGradient} style={StyleSheet.absoluteFill}>
+      <Stack
+        screenOptions={{
+          headerTransparent: true,
+          headerTitle: "",
+          headerTintColor: colors.primaryDark,
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="members/[id]" options={{ headerBackTitle: "Search" }} />
+      </Stack>
+    </LinearGradient>
   );
 }

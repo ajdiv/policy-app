@@ -321,11 +321,17 @@ For any bill's roll-call vote, we compute how party-line vs. bipartisan it was:
 
 ## Build roadmap
 
-> **Status:** Phase 1 is **implemented**. Backend (`server/`) compiles and runs; it ingests
-> executive orders from the live Federal Register API and current members from Congress.gov, computes
-> Gemini embeddings, and serves search/profile/ask endpoints. The Expo client (search → profile →
-> Ask) bundles and typechecks for web and mobile. The AI answer step activates once `GEMINI_API_KEY`
-> is set and `npm run ingest` is re-run to build embeddings.
+> **Status:** Phases 1–2 are **implemented**.
+> - **Phase 1:** executive orders (Federal Register) + members (Congress.gov), Gemini embeddings, RAG ask.
+> - **Phase 2:** real **House roll-call votes** (Congress.gov, 2023+) — roll calls, the bills they're on,
+>   and how every member voted. The legislator Ask path does semantic search over the bills a member
+>   voted on, then returns a **stance label + confidence**, a grounded summary, and **per-vote evidence
+>   citations** ("why this vote matters" + a Congress.gov link).
+> - **Client:** redesigned to the "Political Voting Record Analyzer" look — gradient landing, a
+>   two-column analysis + evidence layout (responsive: stacked on phones), stance badges, and vote
+>   citation cards. Typechecks and bundles for web and mobile.
+>
+> The AI answer step activates once `GEMINI_API_KEY` is set and `npm run ingest` has been run.
 
 **Phase 1 — Vertical slice (first deliverable).**
 One working end-to-end path proving the whole stack:
@@ -335,13 +341,17 @@ One working end-to-end path proving the whole stack:
 - Screens: search a member by name/state/chamber → profile → **Ask the AI** → cited answer.
 - Demo target: *"What are Trump's views on guns?"* answered from semantically-matched real executive orders with citations.
 
-**Phase 2 — Full vote history.**
-- Ingest Voteview bulk data for both chambers; build the ICPSR↔bioguide crosswalk.
-- Member profiles list real votes (for/against) with the bills attached.
+**Phase 2 — Real House votes. ✅ Implemented (current).**
+- Ingest Congress.gov House roll-call votes (118th/119th, 2023+): roll calls, their bills (title +
+  policy area), and every member's vote. Ingestion is throttled, retries transient failures, and is
+  resumable. Tune coverage with `INGEST_MAX_ROLLCALLS`.
+- Legislator Ask path: semantic search over the bills a member voted on → structured stance label +
+  Laplace-smoothed confidence + per-vote rationale, with Congress.gov citations.
+- *Later:* Senate votes and full pre-2023 history (e.g. via Voteview bulk data + an ICPSR↔bioguide crosswalk).
 
 **Phase 3 — Bills explorer + temperature.**
 - Bill search (proposed/failed/enacted) and "who voted how" per bill.
-- Partisan temperature gauge.
+- Partisan temperature gauge (party `votePartyTotal` data is already captured per roll call).
 
 **Phase 4 — Polish & scale.**
 - Re-embed/backfill embeddings as the full historical corpus grows; tune retrieval (chunking, hybrid keyword+vector).

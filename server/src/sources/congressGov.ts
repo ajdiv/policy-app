@@ -54,6 +54,121 @@ function mapMember(m: any): CgMember {
   };
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * GET with throttle + retry. The API drops connections ("fetch failed") under
+ * rapid sequential load, so we pace requests and retry transient failures.
+ */
+async function getJson(path: string): Promise<any> {
+  const sep = path.includes("?") ? "&" : "?";
+  const url = `${BASE}${path}${sep}api_key=${config.congressGovApiKey}&format=json`;
+  await sleep(75); // gentle throttle
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (res.status === 429 || res.status >= 500) {
+        await sleep(500 * 2 ** attempt);
+        continue;
+      }
+      if (!res.ok) throw new Error(`Congress.gov API error ${res.status} on ${path}: ${await res.text()}`);
+      return await res.json();
+    } catch (e) {
+      lastErr = e; // network-level ("fetch failed") — back off and retry
+      await sleep(500 * 2 ** attempt);
+    }
+  }
+  throw lastErr ?? new Error(`Congress.gov request failed: ${path}`);
+}
+
+export interface CgRollCall {
+  congress: number;
+  session: number;
+  rollCallNumber: number;
+  legislationType: string | null; // HR, HRES, S, ...
+  legislationNumber: string | null;
+  result: string | null;
+  voteType: string | null;
+  startDate: string | null;
+  legislationUrl: string | null;
+}
+
+/** List House roll-call votes for a congress+session, newest first, up to `max`. */
+export async function fetchHouseRollCalls(
+  congress: number,
+  session: number,
+  max = 250,
+): Promise<CgRollCall[]> {
+  const out: CgRollCall[] = [];
+  const limit = 250;
+  let offset = 0;
+  while (out.length < max) {
+    const data = await getJson(`/house-vote/${congress}/${session}?limit=${limit}&offset=${offset}`);
+    const rows: any[] = data.houseRollCallVotes ?? [];
+    for (const r of rows) {
+      out.push({
+        congress: r.congress,
+        session: r.sessionNumber,
+        rollCallNumber: r.rollCallNumber,
+        legislationType: r.legislationType ?? null,
+        legislationNumber: r.legislationNumber ?? null,
+        result: r.result ?? null,
+        voteType: r.voteType ?? null,
+        startDate: r.startDate ?? null,
+        legislationUrl: r.legislationUrl ?? null,
+      });
+    }
+    if (rows.length < limit || !data.pagination?.next) break;
+    offset += limit;
+  }
+  return out.slice(0, max);
+}
+
+export interface CgMemberVote {
+  bioguideId: string;
+  voteCast: string; // Aye | No | Not Voting | Present
+  voteParty: string | null;
+  voteState: string | null;
+}
+
+/** How each member voted on a specific House roll call. */
+export async function fetchMemberVotes(
+  congress: number,
+  session: number,
+  rollCall: number,
+): Promise<CgMemberVote[]> {
+  const data = await getJson(`/house-vote/${congress}/${session}/${rollCall}/members`);
+  const results: any[] = data.houseRollCallVoteMemberVotes?.results ?? [];
+  return results.map((r) => ({
+    bioguideId: r.bioguideID,
+    voteCast: r.voteCast ?? "",
+    voteParty: r.voteParty ?? null,
+    voteState: r.voteState ?? null,
+  }));
+}
+
+export interface CgBill {
+  title: string | null;
+  policyArea: string | null;
+}
+
+/** Fetch a bill's title and policy area. Returns null if not found. */
+export async function fetchBill(
+  congress: number,
+  billType: string,
+  number: string,
+): Promise<CgBill | null> {
+  try {
+    const data = await getJson(`/bill/${congress}/${billType.toLowerCase()}/${number}`);
+    const bill = data.bill;
+    if (!bill) return null;
+    return { title: bill.title ?? null, policyArea: bill.policyArea?.name ?? null };
+  } catch {
+    return null; // some legislation types (e.g. procedural) may not resolve
+  }
+}
+
 /** Fetch current members of Congress, paginating up to `max`. */
 export async function fetchCurrentMembers(max = 600): Promise<CgMember[]> {
   if (!hasCongressGov()) {

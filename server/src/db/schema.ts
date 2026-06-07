@@ -20,30 +20,38 @@ export const members = sqliteTable("members", {
   currentMember: integer("current_member", { mode: "boolean" }),
 });
 
-/** Bills (lightly used in Phase 1; populated fully in Phase 3). */
+/** Bills tied to roll-call votes. */
 export const bills = sqliteTable("bills", {
-  id: text("id").primaryKey(), // e.g. "118-hr-1234"
+  id: text("id").primaryKey(), // e.g. "118-HR-1234"
   congress: integer("congress"),
-  billType: text("bill_type"),
+  billType: text("bill_type"), // HR, HRES, S, ...
   number: integer("number"),
   title: text("title").notNull(),
+  policyArea: text("policy_area"), // Congress.gov's single policy-area label
   summary: text("summary"),
   status: text("status"), // introduced | failed | enacted | ...
   sponsorId: text("sponsor_id"),
   subjects: text("subjects"), // JSON array
   introducedDate: text("introduced_date"),
+  url: text("url"), // congress.gov human URL
 });
 
-/** A single roll-call vote event (Phase 2). */
+/** A single House roll-call vote event. */
 export const rollcalls = sqliteTable("rollcalls", {
-  id: text("id").primaryKey(),
+  id: text("id").primaryKey(), // "{congress}-{session}-{rollCallNumber}"
   congress: integer("congress"),
-  chamber: text("chamber"),
-  number: integer("number"),
+  session: integer("session"),
+  chamber: text("chamber"), // 'house' (senate later)
+  number: integer("number"), // rollCallNumber
   date: text("date"),
   question: text("question"),
   result: text("result"),
+  voteType: text("vote_type"),
+  legislationType: text("legislation_type"),
+  legislationNumber: text("legislation_number"),
   billId: text("bill_id"),
+  partyTotals: text("party_totals"), // JSON: per-party yea/nay totals (for partisan temperature)
+  url: text("url"),
 });
 
 /** How a member voted on a roll call (Phase 2). */
