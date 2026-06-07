@@ -7,6 +7,12 @@ import {
 } from "./sources/congressGov.js";
 import type { Member } from "./db/schema.js";
 
+// Official public-domain portraits for executives (no Congress.gov record).
+const PRESIDENT_PORTRAITS: Record<string, string> = {
+  "potus-donald-trump":
+    "https://upload.wikimedia.org/wikipedia/commons/5/56/Donald_Trump_official_portrait.jpg",
+};
+
 const ROLE_LABEL: Record<string, string> = {
   Representative: "U.S. Representative",
   Senator: "U.S. Senator",
@@ -133,7 +139,7 @@ export async function buildProfile(member: Member): Promise<ProfileData> {
   }
 
   return {
-    headshotUrl: detail?.imageUrl ?? member.imageUrl ?? null,
+    headshotUrl: detail?.imageUrl ?? member.imageUrl ?? PRESIDENT_PORTRAITS[member.id] ?? null,
     tenure,
     positions,
     recentVotes,

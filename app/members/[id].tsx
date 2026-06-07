@@ -314,7 +314,7 @@ export default function Profile() {
                     )}
                   </View>
 
-                  <Text style={styles.answerText}>{answer.answer}</Text>
+                  <Text style={styles.answerText}>{renderAnswerWithLinks(answer.answer, answer.citations)}</Text>
 
                   <Pressable onPress={() => { setAnswer(null); setQuestion(""); }}>
                     <Text style={styles.link}>Ask another question</Text>
@@ -426,6 +426,26 @@ function fmtDate(d: string): string {
   const dt = new Date(d);
   return isNaN(dt.getTime()) ? d.slice(0, 10) : dt.toLocaleDateString("en-US");
 }
+/** Render answer prose, turning inline citations like [2] or [EO 14206] into links. */
+function renderAnswerWithLinks(text: string, citations: AskResult["citations"]) {
+  const byIndex = new Map(citations.map((c) => [String(c.index), c]));
+  const byRef = new Map(citations.map((c) => [c.ref.toLowerCase(), c]));
+  return text.split(/(\[[^\]]+\])/g).map((part, i) => {
+    const m = /^\[([^\]]+)\]$/.exec(part);
+    if (m) {
+      const key = m[1].trim();
+      const c = byIndex.get(key) ?? byRef.get(key.toLowerCase());
+      if (c?.url) {
+        return (
+          <Text key={i} style={styles.inlineLink} onPress={() => Linking.openURL(c.url!)}>
+            {part}
+          </Text>
+        );
+      }
+    }
+    return <Text key={i}>{part}</Text>;
+  });
+}
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
@@ -440,25 +460,26 @@ const styles = StyleSheet.create({
   page: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 48, alignItems: "center" },
   shell: { width: "100%", maxWidth: 1080, alignSelf: "center" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
-  name: { fontSize: 28, fontWeight: "800", color: colors.title },
-  meta: { color: colors.muted, marginTop: 4, fontSize: 15 },
+  name: { fontSize: 36, fontWeight: "800", color: colors.title, letterSpacing: -0.5 },
+  meta: { color: colors.subtitle, marginTop: 4, fontSize: 17, fontWeight: "600" },
 
   profileCard: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 20,
+    padding: 28,
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 16,
+    borderColor: "#dfe3f3",
+    marginBottom: 20,
     shadowColor: colors.shadow,
     shadowOpacity: 1,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 12 },
   },
-  profileRow: { flexDirection: "row", alignItems: "center", gap: 18 },
-  headshot: { width: 88, height: 88, borderRadius: 12, backgroundColor: "#eef2ff" },
+  profileRow: { flexDirection: "row", alignItems: "center", gap: 26 },
+  headshot: { width: 132, height: 132, borderRadius: 18, backgroundColor: "#eef2ff", borderWidth: 3, borderColor: "#e0e7ff" },
   headshotFallback: { alignItems: "center", justifyContent: "center" },
-  headshotInitials: { fontSize: 28, fontWeight: "800", color: colors.primary },
+  headshotInitials: { fontSize: 46, fontWeight: "800", color: colors.primary },
+  inlineLink: { color: colors.primary, fontWeight: "700", textDecorationLine: "underline" },
   badgeRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 10, flexWrap: "wrap" },
   partyBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 },
   partyBadgeText: { fontWeight: "700", fontSize: 13 },
