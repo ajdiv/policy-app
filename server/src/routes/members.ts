@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { and, eq, like, desc } from "drizzle-orm";
+import { and, eq, like, or, desc, type SQL } from "drizzle-orm";
 import { db, sqlite } from "../db/client.js";
 import { members, executiveOrders } from "../db/schema.js";
+import { expandNameQuery, resolveState } from "../search/aliases.js";
 
 export const membersRouter = Router();
 
@@ -11,10 +12,14 @@ membersRouter.get("/", (req, res) => {
   const chamber = String(req.query.chamber ?? "").trim();
   const state = String(req.query.state ?? "").trim();
 
-  const conditions = [];
-  if (q) conditions.push(like(members.fullName, `%${q}%`));
+  const conditions: SQL[] = [];
+  if (q) {
+    // Match the full name against the raw query plus nickname/initialism aliases.
+    const nameOr = or(...expandNameQuery(q).map((t) => like(members.fullName, `%${t}%`)));
+    if (nameOr) conditions.push(nameOr);
+  }
   if (chamber) conditions.push(eq(members.chamber, chamber));
-  if (state) conditions.push(like(members.state, `%${state}%`));
+  if (state) conditions.push(like(members.state, `%${resolveState(state)}%`));
 
   const rawLimit = Number(req.query.limit);
   const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 250) : 250;

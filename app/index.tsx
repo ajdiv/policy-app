@@ -85,6 +85,12 @@ export default function Home() {
     router.push({ pathname: "/members/[id]", params: { id: m.id } });
   }
 
+  function clearQuery() {
+    setQ("");
+    setSuggestions([]);
+    setShowNameAC(false);
+  }
+
   async function runSearch() {
     setShowNameAC(false);
     setShowStateAC(false);
@@ -114,7 +120,7 @@ export default function Home() {
           <View style={[styles.searchRow, !wide && { flexDirection: "column" }, styles.zTop]}>
             <View style={[styles.nameWrap, wide && { flex: 1 }]}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { paddingRight: 40 }]}
                 placeholder="Enter politician's name (e.g., Bernie Sanders, Ted Cruz)"
                 placeholderTextColor={colors.muted}
                 value={q}
@@ -126,6 +132,11 @@ export default function Home() {
                 autoCorrect={false}
                 returnKeyType="search"
               />
+              {q.length > 0 && (
+                <Pressable style={styles.clearBtn} onPress={clearQuery} hitSlop={8} accessibilityLabel="Clear search">
+                  <Text style={styles.clearBtnText}>×</Text>
+                </Pressable>
+              )}
               {showNameAC && (
                 <View style={styles.dropdown}>
                   {suggestions.length === 0 ? (
@@ -264,6 +275,17 @@ const styles = StyleSheet.create({
   zMid: { zIndex: 20 },
   searchRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   nameWrap: { position: "relative" },
+  clearBtn: {
+    position: "absolute",
+    right: 8,
+    top: 0,
+    bottom: 0,
+    width: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  clearBtnText: { fontSize: 22, lineHeight: 24, color: colors.muted, fontWeight: "600" },
   input: {
     backgroundColor: "#fff",
     borderWidth: 1,
