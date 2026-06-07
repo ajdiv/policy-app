@@ -59,11 +59,13 @@ export async function searchMembers(params: {
   q?: string;
   chamber?: string;
   state?: string;
+  limit?: number;
 }): Promise<Member[]> {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.chamber) qs.set("chamber", params.chamber);
   if (params.state) qs.set("state", params.state);
+  if (params.limit) qs.set("limit", String(params.limit));
   const data = await getJson<{ members: Member[] }>(`/api/members?${qs.toString()}`);
   return data.members;
 }

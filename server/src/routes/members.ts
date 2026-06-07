@@ -16,8 +16,11 @@ membersRouter.get("/", (req, res) => {
   if (chamber) conditions.push(eq(members.chamber, chamber));
   if (state) conditions.push(like(members.state, `%${state}%`));
 
+  const rawLimit = Number(req.query.limit);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 250) : 250;
+
   const where = conditions.length ? and(...conditions) : undefined;
-  const rows = db.select().from(members).where(where).limit(250).all();
+  const rows = db.select().from(members).where(where).limit(limit).all();
   res.json({ members: rows });
 });
 
