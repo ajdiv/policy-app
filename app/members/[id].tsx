@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   ScrollView,
   ActivityIndicator,
@@ -14,29 +13,15 @@ import {
 import { useLocalSearchParams } from "expo-router";
 import {
   getMember,
-  ask,
   type Member,
-  type AskResult,
   type Tenure,
   type Position,
   type VoteItem,
   type LegislationItem,
   type RecordItem,
 } from "../../lib/api";
-import { colors, stanceColors, castColors } from "../../lib/theme";
-
-const LEGISLATOR_SUGGESTIONS = [
-  "What are their views on climate change?",
-  "How did they vote on healthcare bills?",
-  "Show votes where they broke with their party",
-  "What's their record on immigration reform?",
-];
-const PRESIDENT_SUGGESTIONS = [
-  "What are their views on immigration?",
-  "Their record on energy and the environment",
-  "Actions on trade and tariffs",
-  "Views on national security",
-];
+import { colors, castColors } from "../../lib/theme";
+import { ChatBubble } from "../../components/ChatBubble";
 
 export default function Profile() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -57,11 +42,6 @@ export default function Profile() {
   const [eoVisible, setEoVisible] = useState(5);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  const [question, setQuestion] = useState("");
-  const [asking, setAsking] = useState(false);
-  const [answer, setAnswer] = useState<AskResult | null>(null);
-  const [askError, setAskError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -88,22 +68,6 @@ export default function Profile() {
     })();
   }, [id]);
 
-  async function runAsk(text?: string) {
-    const qn = (text ?? question).trim();
-    if (!qn || !id) return;
-    setQuestion(qn);
-    setAsking(true);
-    setAskError(null);
-    setAnswer(null);
-    try {
-      setAnswer(await ask(id, qn));
-    } catch (e: any) {
-      setAskError(e.message ?? "Could not get an answer.");
-    } finally {
-      setAsking(false);
-    }
-  }
-
   if (loading) {
     return (
       <View style={styles.center}>
@@ -120,10 +84,10 @@ export default function Profile() {
   }
 
   const isPresident = member.role === "president";
-  const suggestions = isPresident ? PRESIDENT_SUGGESTIONS : LEGISLATOR_SUGGESTIONS;
 
   return (
-    <ScrollView contentContainerStyle={styles.page}>
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.page}>
       <View style={styles.shell}>
         {/* Profile header */}
         <View style={styles.profileCard}>
@@ -249,179 +213,10 @@ export default function Profile() {
           </View>
         )}
 
-        <View style={[styles.columns, !wide && { flexDirection: "column" }]}>
-          {/* LEFT — analysis */}
-          <View style={[styles.colLeft, wide && { flex: 1.45 }]}>
-            <View style={styles.card}>
-              <View style={styles.cardHeaderRow}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>AI</Text>
-                </View>
-                <Text style={styles.cardTitle}>Evidence-Based Voting Analysis</Text>
-              </View>
-              <Text style={styles.cardDesc}>
-                {isPresident
-                  ? "Ask about this president's record. Answers are grounded in their executive orders, with links to the Federal Register."
-                  : "Ask questions about this politician's voting record. All answers are grounded in verifiable roll call data with direct links to Congress.gov."}
-              </Text>
-
-              <View style={styles.noteBox}>
-                <Text style={styles.noteTitle}>ⓘ Important Notes:</Text>
-                {(isPresident
-                  ? [
-                      "Based on executive orders from the Federal Register",
-                      "Stances are inferred from official actions, not statements",
-                      "Every claim links to the specific executive order",
-                    ]
-                  : [
-                      "Stances are inferred from voting behavior, not stated positions",
-                      "Data currently covers House recorded votes from 2023 onward (118th Congress)",
-                      "Every claim is backed by specific roll call evidence",
-                    ]
-                ).map((n) => (
-                  <Text key={n} style={styles.noteBullet}>
-                    •  {n}
-                  </Text>
-                ))}
-              </View>
-
-              {!answer && !asking && (
-                <View>
-                  <Text style={styles.tryTitle}>Try asking:</Text>
-                  <View style={styles.suggestWrap}>
-                    {suggestions.map((s) => (
-                      <Pressable key={s} style={styles.suggestChip} onPress={() => runAsk(s)}>
-                        <Text style={styles.suggestText}>&ldquo;{s}&rdquo;</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {asking && (
-                <View style={{ paddingVertical: 16, flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <ActivityIndicator color={colors.primary} />
-                  <Text style={styles.muted}>Analyzing the record…</Text>
-                </View>
-              )}
-
-              {answer && (
-                <View>
-                  <View style={styles.questionBox}>
-                    <Text style={styles.questionLabel}>Your Question:</Text>
-                    <Text style={styles.questionText}>{answer.question || question}</Text>
-                  </View>
-
-                  <View style={styles.analysisRow}>
-                    <Text style={styles.analysisLabel}>Analysis:</Text>
-                    {answer.stance && answer.stance.total > 0 && (
-                      <View style={[styles.stanceBadge, { backgroundColor: stanceColors(answer.stance.label).bg }]}>
-                        <Text style={[styles.stanceText, { color: stanceColors(answer.stance.label).text }]}>
-                          {answer.stance.label} ({answer.stance.confidence}% confidence)
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <Text style={styles.answerText}>{renderAnswerWithLinks(answer.answer, answer.citations)}</Text>
-
-                  <Pressable onPress={() => { setAnswer(null); setQuestion(""); }}>
-                    <Text style={styles.link}>Ask another question</Text>
-                  </Pressable>
-                </View>
-              )}
-
-              {askError && <Text style={styles.error}>{askError}</Text>}
-            </View>
-
-            {/* Ask bar */}
-            <View style={styles.askBar}>
-              <TextInput
-                style={styles.askInput}
-                placeholder="Ask about their voting record…"
-                placeholderTextColor={colors.muted}
-                value={question}
-                onChangeText={setQuestion}
-                onSubmitEditing={() => runAsk()}
-                returnKeyType="send"
-              />
-              <Pressable
-                style={[styles.askBtn, (asking || !question.trim()) && { opacity: 0.5 }]}
-                onPress={() => runAsk()}
-                disabled={asking || !question.trim()}
-              >
-                <Text style={styles.askBtnText}>➤ Ask</Text>
-              </Pressable>
-            </View>
-          </View>
-
-          {/* RIGHT — evidence */}
-          <View style={[styles.colRight, wide && { flex: 1 }]}>
-            <View style={styles.card}>
-              <View style={styles.evidenceHeader}>
-                <View style={styles.greenDot} />
-                <Text style={styles.cardTitle}>Evidence Citations</Text>
-              </View>
-
-              {!answer ? (
-                <View style={styles.evidenceEmpty}>
-                  <Text style={styles.evidenceEmptyIcon}>◔</Text>
-                  <Text style={styles.muted}>Ask a question to see supporting evidence</Text>
-                </View>
-              ) : answer.citations.length === 0 ? (
-                <Text style={styles.muted}>No supporting records were found for this question.</Text>
-              ) : (
-                <View>
-                  <View style={styles.summaryBox}>
-                    <Text style={styles.summaryTitle}>Evidence Summary</Text>
-                    <Text style={styles.summaryBig}>
-                      {answer.citations.length} {answer.citations[0].type === "vote" ? "votes" : "orders"} analyzed
-                    </Text>
-                    <Text style={styles.muted}>All claims are backed by these verified records</Text>
-                  </View>
-
-                  {answer.citations.map((c) => (
-                    <View key={c.index} style={styles.citationCard}>
-                      <View style={styles.citationTop}>
-                        <View style={styles.numBadge}>
-                          <Text style={styles.numBadgeText}>{c.index}</Text>
-                        </View>
-                        {c.type === "vote" && c.cast ? (
-                          <View style={[styles.voteBadge, { backgroundColor: castColors(c.cast).bg }]}>
-                            <Text style={[styles.voteBadgeText, { color: castColors(c.cast).text }]}>{c.cast}</Text>
-                          </View>
-                        ) : (
-                          <View style={[styles.voteBadge, { backgroundColor: colors.evidenceBg }]}>
-                            <Text style={[styles.voteBadgeText, { color: colors.primaryDark }]}>{c.ref}</Text>
-                          </View>
-                        )}
-                        {c.date && <Text style={styles.citationDate}>{fmtDate(c.date)}</Text>}
-                      </View>
-
-                      <Text style={styles.citationTitle}>{c.title}</Text>
-                      {c.type === "vote" && <Text style={styles.citationRef}>{c.ref}</Text>}
-
-                      {c.why ? (
-                        <View style={styles.whyBox}>
-                          <Text style={styles.whyTitle}>Why this vote matters:</Text>
-                          <Text style={styles.whyText}>{c.why}</Text>
-                        </View>
-                      ) : null}
-
-                      {c.url && (
-                        <Pressable onPress={() => Linking.openURL(c.url!)}>
-                          <Text style={styles.link}>View on Congress.gov ↗</Text>
-                        </Pressable>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+      <ChatBubble memberId={id!} role={member.role} name={member.fullName} />
+    </View>
   );
 }
 
@@ -434,26 +229,6 @@ function roleLabel(role: string): string {
 function fmtDate(d: string): string {
   const dt = new Date(d);
   return isNaN(dt.getTime()) ? d.slice(0, 10) : dt.toLocaleDateString("en-US");
-}
-/** Render answer prose, turning inline citations like [2] or [EO 14206] into links. */
-function renderAnswerWithLinks(text: string, citations: AskResult["citations"]) {
-  const byIndex = new Map(citations.map((c) => [String(c.index), c]));
-  const byRef = new Map(citations.map((c) => [c.ref.toLowerCase(), c]));
-  return text.split(/(\[[^\]]+\])/g).map((part, i) => {
-    const m = /^\[([^\]]+)\]$/.exec(part);
-    if (m) {
-      const key = m[1].trim();
-      const c = byIndex.get(key) ?? byRef.get(key.toLowerCase());
-      if (c?.url) {
-        return (
-          <Text key={i} style={styles.inlineLink} onPress={() => Linking.openURL(c.url!)}>
-            {part}
-          </Text>
-        );
-      }
-    }
-    return <Text key={i}>{part}</Text>;
-  });
 }
 /** A "Load more (N more)" button shown when a list has more rows than are visible. */
 function loadMore(total: number, visible: number, onMore: () => void) {
@@ -475,7 +250,8 @@ function partyColor(party: string): { bg: string; text: string } {
 }
 
 const styles = StyleSheet.create({
-  page: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 48, alignItems: "center" },
+  screen: { flex: 1 },
+  page: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 96, alignItems: "center" },
   shell: { width: "100%", maxWidth: 1080, alignSelf: "center" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
   name: { fontSize: 36, fontWeight: "800", color: colors.title, letterSpacing: -0.5 },
