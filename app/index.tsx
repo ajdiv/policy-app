@@ -246,6 +246,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
+    // Lift the whole card (and its floating dropdowns) above the info card /
+    // results that follow it as siblings, so autocomplete overlays them.
+    position: "relative",
+    zIndex: 50,
   },
   // zIndex ordering so the name dropdown floats above the filter row.
   zTop: { zIndex: 30 },
