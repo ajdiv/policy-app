@@ -11,7 +11,7 @@ export function AuthButton() {
   if (user) {
     const label = user.name ?? user.email;
     return (
-      <View style={styles.chip}>
+      <Pressable style={styles.chip} onPress={signOut} accessibilityLabel={`Sign out ${label}`}>
         {user.picture ? (
           <Image source={{ uri: user.picture }} style={styles.avatar} />
         ) : (
@@ -19,14 +19,8 @@ export function AuthButton() {
             <Text style={styles.avatarText}>{label.charAt(0).toUpperCase()}</Text>
           </View>
         )}
-        <Text style={styles.name} numberOfLines={1}>
-          {label}
-        </Text>
-        <View style={styles.divider} />
-        <Pressable onPress={signOut} hitSlop={8} accessibilityLabel="Sign out">
-          <Text style={styles.signOut}>Sign out</Text>
-        </Pressable>
-      </View>
+        <Text style={styles.signOut}>Sign out</Text>
+      </Pressable>
     );
   }
 
@@ -60,14 +54,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 22,
     paddingLeft: 5,
-    paddingRight: 12,
+    paddingRight: 14,
     paddingVertical: 5,
-    maxWidth: 300,
   },
   avatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#eef2ff" },
   avatarFallback: { alignItems: "center", justifyContent: "center" },
   avatarText: { color: colors.primary, fontWeight: "800", fontSize: 13 },
-  name: { color: colors.text, fontWeight: "600", fontSize: 13, flexShrink: 1 },
-  divider: { width: StyleSheet.hairlineWidth, height: 18, backgroundColor: colors.border, marginHorizontal: 2 },
   signOut: { color: colors.primary, fontWeight: "700", fontSize: 13 },
 });
