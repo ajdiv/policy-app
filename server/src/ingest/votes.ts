@@ -75,22 +75,29 @@ export async function ingestHouseVotes() {
           billId = `${rc.congress}-${rc.legislationType.toUpperCase()}-${rc.legislationNumber}`;
           if (!seenBills.has(billId)) {
             seenBills.add(billId);
-            const exists = sqlite.prepare(`SELECT 1 FROM bills WHERE id = ?`).get(billId);
-            if (!exists) {
+            const placeholder = `${rc.legislationType} ${rc.legislationNumber}`;
+            const existing = sqlite
+              .prepare(`SELECT title, policy_area AS policyArea FROM bills WHERE id = ?`)
+              .get(billId) as { title: string; policyArea: string | null } | undefined;
+            // Fetch detail when missing OR when a prior run only stored the
+            // placeholder fallback (e.g. a failed fetch) — so re-runs self-heal.
+            const needsDetail = !existing || existing.title === placeholder || existing.policyArea == null;
+            if (needsDetail) {
               const detail = await fetchBill(rc.congress, rc.legislationType, rc.legislationNumber);
+              const title = detail?.title ?? existing?.title ?? placeholder;
               db.insert(bills)
                 .values({
                   id: billId,
                   congress: rc.congress,
                   billType: rc.legislationType.toUpperCase(),
                   number: Number(rc.legislationNumber) || null,
-                  title: detail?.title ?? `${rc.legislationType} ${rc.legislationNumber}`,
-                  policyArea: detail?.policyArea ?? null,
+                  title,
+                  policyArea: detail?.policyArea ?? existing?.policyArea ?? null,
                   url: rc.legislationUrl,
                 })
                 .onConflictDoUpdate({
                   target: bills.id,
-                  set: { title: detail?.title ?? `${rc.legislationType} ${rc.legislationNumber}` },
+                  set: { title, policyArea: detail?.policyArea ?? existing?.policyArea ?? null },
                 })
                 .run();
             }
