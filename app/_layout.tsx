@@ -1,7 +1,23 @@
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../lib/theme";
+
+/** Home button shown at the top-left of screens with a header. */
+function HomeButton() {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.navigate("/")}
+      hitSlop={12}
+      accessibilityLabel="Home"
+      style={styles.homeBtn}
+    >
+      <Ionicons name="home" size={22} color={colors.primaryDark} />
+    </Pressable>
+  );
+}
 
 export default function RootLayout() {
   return (
@@ -16,8 +32,15 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="members/[id]" options={{ headerBackTitle: "Search" }} />
+        <Stack.Screen
+          name="members/[id]"
+          options={{ headerLeft: () => <HomeButton /> }}
+        />
       </Stack>
     </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  homeBtn: { paddingHorizontal: 8, paddingVertical: 6 },
+});
