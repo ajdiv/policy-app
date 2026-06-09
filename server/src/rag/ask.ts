@@ -34,7 +34,16 @@ export interface AskResult {
   citations: Citation[];
 }
 
-export async function answerQuestion(memberId: string, question: string): Promise<AskResult> {
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export async function answerQuestion(
+  memberId: string,
+  question: string,
+  history: ChatTurn[] = [],
+): Promise<AskResult> {
   const member = db.select().from(members).where(eq(members.id, memberId)).get();
   if (!member) throw Object.assign(new Error("Member not found"), { status: 404 });
   const base = {
@@ -45,18 +54,35 @@ export async function answerQuestion(memberId: string, question: string): Promis
     state: member.state,
   };
 
-  if (member.role === "president") return answerPresident(base, question);
-  return answerLegislator(base, question);
+  if (member.role === "president") return answerPresident(base, question, history);
+  return answerLegislator(base, question, history);
 }
 
 type Base = AskResult["member"];
+
+/**
+ * Build the retrieval query for a (possibly follow-up) turn WITHOUT an extra LLM
+ * call — embeddings are a separate quota bucket, so we keep the turn to a single
+ * generate call. We bias retrieval with the most recent user turn for context;
+ * the full history still goes to the answer-generation step for reasoning.
+ */
+function buildRetrievalQuery(history: ChatTurn[], question: string): string {
+  const lastUser = [...history].reverse().find((t) => t.role === "user");
+  return lastUser ? `${lastUser.content} ${question}` : question;
+}
+
+function renderHistory(history: ChatTurn[]): string {
+  if (history.length === 0) return "";
+  return ["CONVERSATION SO FAR:", ...history.map((t) => `${t.role === "user" ? "User" : "Assistant"}: ${t.content}`), ""].join("\n");
+}
 
 // --- Legislator path: real roll-call votes -> stance + cited evidence ---
 
 const ANALYSIS_SCHEMA: Schema = {
   type: Type.OBJECT,
   properties: {
-    summary: { type: Type.STRING },
+    answer: { type: Type.STRING },
+    isStanceQuestion: { type: Type.BOOLEAN },
     items: {
       type: Type.ARRAY,
       items: {
@@ -70,15 +96,16 @@ const ANALYSIS_SCHEMA: Schema = {
       },
     },
   },
-  required: ["summary", "items"],
+  required: ["answer", "isStanceQuestion", "items"],
 };
 
 interface AnalysisOut {
-  summary: string;
+  answer: string;
+  isStanceQuestion: boolean;
   items: { index: number; direction: "supportive" | "opposed" | "neutral"; why: string }[];
 }
 
-async function answerLegislator(member: Base, question: string): Promise<AskResult> {
+async function answerLegislator(member: Base, question: string, history: ChatTurn[]): Promise<AskResult> {
   const billIds = (
     sqlite
       .prepare(
@@ -91,7 +118,7 @@ async function answerLegislator(member: Base, question: string): Promise<AskResu
 
   if (billIds.length === 0) return empty(member, "no-votes");
 
-  const queryVector = await embedOne(question);
+  const queryVector = await embedOne(buildRetrievalQuery(history, question));
   const hits = search(queryVector, { sourceType: "bill", sourceIds: billIds, k: 800, limit: 8 });
   if (hits.length === 0) return empty(member, "no-matches");
 
@@ -125,7 +152,10 @@ async function answerLegislator(member: Base, question: string): Promise<AskResu
       } — ${member.fullName} voted ${r.cast}${r.date ? ` on ${r.date.slice(0, 10)}` : ""}.`,
   );
 
-  const out = await generateStructured<AnalysisOut>(buildLegislatorPrompt(member.fullName, question, recordBlocks), ANALYSIS_SCHEMA);
+  const out = await generateStructured<AnalysisOut>(
+    buildLegislatorPrompt(member.fullName, question, recordBlocks, history),
+    ANALYSIS_SCHEMA,
+  );
   const byIndex = new Map((out.items ?? []).map((it) => [it.index, it]));
 
   const citations: Citation[] = records.map((r, i) => {
@@ -147,8 +177,9 @@ async function answerLegislator(member: Base, question: string): Promise<AskResu
   return {
     question,
     member,
-    stance: computeStance(citations),
-    answer: (out.summary ?? "").trim(),
+    // Only surface a stance for "what are their views on X" turns, not follow-ups.
+    stance: out.isStanceQuestion ? computeStance(citations) : null,
+    answer: (out.answer ?? "").trim(),
     citations,
   };
 }
@@ -171,19 +202,20 @@ function computeStance(citations: Citation[]): Stance {
   return { label, confidence, supportive, opposed, total };
 }
 
-function buildLegislatorPrompt(name: string, question: string, blocks: string[]): string {
+function buildLegislatorPrompt(name: string, question: string, blocks: string[], history: ChatTurn[]): string {
   return [
-    `You are a nonpartisan civic-education assistant analyzing the real roll-call voting record of ${name}.`,
+    `You are a nonpartisan civic-education assistant in an ongoing conversation about the real roll-call voting record of ${name}.`,
     `Use ONLY the votes provided below. Do not use outside knowledge or invent bills.`,
     ``,
-    `For EACH numbered vote, decide whether that vote indicates the member is "supportive", "opposed", or "neutral" toward the subject of the question — reasoning from the bill's title/policy area and how they voted (Yea vs Nay). Write a one-sentence "why" grounded in the bill and their vote.`,
-    `Then write a concise, neutral overall "summary" (2-4 sentences) describing their record on this topic, referencing votes by their bracket number like [1], [2].`,
-    `If a vote is not actually relevant to the question, mark it "neutral".`,
+    renderHistory(history),
+    `For EACH numbered vote, decide whether it indicates the member is "supportive", "opposed", or "neutral" toward the subject of the user's LATEST message — reasoning from the bill's title/policy area and how they voted (Yea vs Nay) — with a one-sentence "why". Mark votes not relevant to the message as "neutral".`,
+    `Write "answer": respond to the user's LATEST message in the context of the conversation. For an overall-position question, give a concise neutral 2-4 sentence summary; for a follow-up (e.g. "why?", "what about X?", "tell me more"), answer that specifically. Reference votes by bracket number like [1], [2].`,
+    `Set "isStanceQuestion" to true ONLY when the user is asking for the member's overall stance/views on a topic; set it false for narrower follow-ups.`,
     ``,
     `VOTES:`,
     ...blocks,
     ``,
-    `QUESTION: ${question}`,
+    `USER'S LATEST MESSAGE: ${question}`,
   ].join("\n");
 }
 
@@ -197,7 +229,7 @@ function empty(member: Base, reason: "no-votes" | "no-matches"): AskResult {
 
 // --- President path: executive orders ---
 
-async function answerPresident(member: Base, question: string): Promise<AskResult> {
+async function answerPresident(member: Base, question: string, history: ChatTurn[]): Promise<AskResult> {
   const eos = db
     .select()
     .from(executiveOrders)
@@ -207,7 +239,7 @@ async function answerPresident(member: Base, question: string): Promise<AskResul
   if (ids.length === 0) {
     return { question, member, stance: null, answer: `No records on file for ${member.fullName}.`, citations: [] };
   }
-  const queryVector = await embedOne(question);
+  const queryVector = await embedOne(buildRetrievalQuery(history, question));
   const hits = search(queryVector, { sourceType: "executive_order", sourceIds: ids, limit: 8 });
   const byId = new Map(eos.map((e) => [e.id, e]));
 
@@ -233,12 +265,13 @@ async function answerPresident(member: Base, question: string): Promise<AskResul
   }
 
   const prompt = [
-    `You are a nonpartisan assistant. Answer the question about ${member.fullName} using ONLY the executive orders below.`,
+    `You are a nonpartisan assistant in an ongoing conversation about ${member.fullName}. Answer the user's LATEST message using ONLY the executive orders below.`,
     `Cite each claim with the order in brackets, e.g. [EO 14206]. If the records don't address it, say so. Be concise and neutral.`,
     ``,
+    renderHistory(history),
     ...blocks.map((b, i) => `--- Record ${i + 1} ---\n${b}`),
     ``,
-    `QUESTION: ${question}`,
+    `USER'S LATEST MESSAGE: ${question}`,
   ].join("\n");
 
   return { question, member, stance: null, answer: (await generate(prompt)).trim(), citations };
