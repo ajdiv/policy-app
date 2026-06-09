@@ -91,6 +91,31 @@ billsRouter.get("/policy-areas", (_req, res) => {
   res.json({ policyAreas: rows.map((r) => r.name) });
 });
 
+const TYPE_SLUG: Record<string, string> = {
+  HR: "house-bill",
+  S: "senate-bill",
+  HRES: "house-resolution",
+  SRES: "senate-resolution",
+  HJRES: "house-joint-resolution",
+  SJRES: "senate-joint-resolution",
+  HCONRES: "house-concurrent-resolution",
+  SCONRES: "senate-concurrent-resolution",
+};
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function govUrlFromId(id: string): { congress: number; type: string; number: number; url: string | null } | null {
+  const m = /^(\d+)-([A-Z]+)-(\d+)$/.exec(id);
+  if (!m) return null;
+  const congress = Number(m[1]);
+  const type = m[2];
+  const number = Number(m[3]);
+  const slug = TYPE_SLUG[type];
+  return { congress, type, number, url: slug ? `https://www.congress.gov/bill/${ordinal(congress)}-congress/${slug}/${number}` : null };
+}
+
 /** GET /api/bills/:id — full detail: temperature, party breakdown, who voted. */
 billsRouter.get("/:id", (req, res) => {
   const bill = sqlite
@@ -98,7 +123,21 @@ billsRouter.get("/:id", (req, res) => {
       `SELECT id, title, policy_area AS policyArea, bill_type AS billType, number, url, congress FROM bills WHERE id = ?`,
     )
     .get(req.params.id) as any;
-  if (!bill) return res.status(404).json({ error: "Bill not found" });
+  if (!bill) {
+    // Not in our vote dataset (e.g. a sponsored bill that never got a recorded
+    // House vote). Return a usable payload with a Congress.gov link.
+    const p = govUrlFromId(req.params.id);
+    if (!p) return res.status(404).json({ error: "Bill not found" });
+    return res.json({
+      bill: { id: req.params.id, title: null, policyArea: null, billType: p.type, number: p.number, url: p.url, congress: p.congress },
+      notInDataset: true,
+      temperature: null,
+      primaryResult: null,
+      primaryDate: null,
+      rollcalls: [],
+      votes: [],
+    });
+  }
 
   const rcs = sqlite
     .prepare(`SELECT id, date, result, party_totals AS partyTotals, number FROM rollcalls WHERE bill_id = ? ORDER BY date`)

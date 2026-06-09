@@ -44,7 +44,7 @@ export default function BillDetailScreen() {
     <ScrollView contentContainerStyle={styles.page}>
       <Stack.Screen options={{ title: `${bill.billType} ${bill.number}` }} />
       <View style={styles.shell}>
-        <Text style={styles.title}>{bill.title}</Text>
+        <Text style={styles.title}>{bill.title ?? `${bill.billType} ${bill.number}`}</Text>
         <Text style={styles.meta}>
           {bill.billType} {bill.number} · {bill.congress}th Congress
           {bill.policyArea ? ` · ${bill.policyArea}` : ""}
@@ -55,7 +55,20 @@ export default function BillDetailScreen() {
           </Pressable>
         ) : null}
 
+        {data.notInDataset && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>No recorded House votes</Text>
+            <Text style={styles.subtle}>
+              This bill isn&apos;t in our vote dataset — it may not have reached a recorded House floor vote (our
+              coverage is recorded House votes, 2023→). Use the Congress.gov link above for the full text and status.
+            </Text>
+          </View>
+        )}
+
         {/* Partisan temperature */}
+        {!data.notInDataset && (
+        <>
+
         <View style={styles.card}>
           <View style={styles.tempHeader}>
             <Text style={styles.cardTitle}>Partisan temperature</Text>
@@ -129,6 +142,8 @@ export default function BillDetailScreen() {
             </View>
           ) : null}
         </View>
+        </>
+        )}
       </View>
     </ScrollView>
   );

@@ -182,7 +182,16 @@ export interface BillVote {
 }
 
 export interface BillDetail {
-  bill: Omit<BillSummary, "result" | "date" | "temperature">;
+  bill: {
+    id: string;
+    title: string | null;
+    policyArea: string | null;
+    billType: string;
+    number: number;
+    url: string | null;
+    congress: number;
+  };
+  notInDataset?: boolean;
   temperature: Temperature | null;
   primaryResult: string | null;
   primaryDate: string | null;

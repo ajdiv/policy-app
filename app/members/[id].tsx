@@ -10,7 +10,8 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import {
   getMember,
   type Member,
@@ -25,6 +26,7 @@ import { ChatBubble } from "../../components/ChatBubble";
 
 export default function Profile() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 920;
 
@@ -163,21 +165,36 @@ export default function Profile() {
                   <Text style={styles.muted}>No recent legislation found.</Text>
                 ) : (
                   recentLegislation.slice(0, legVisible).map((l, i) => (
-                    <Pressable key={i} style={styles.listItem} onPress={() => l.url && Linking.openURL(l.url)}>
-                      <View style={styles.itemTopRow}>
-                        <View style={[styles.kindBadge, l.kind === "Sponsored" ? styles.kindSponsored : styles.kindCosponsored]}>
-                          <Text style={[styles.kindBadgeText, l.kind === "Sponsored" ? styles.kindSponsoredText : styles.kindCosponsoredText]}>
-                            {l.kind}
-                          </Text>
+                    <View key={i} style={styles.legRow}>
+                      <Pressable
+                        style={styles.legMain}
+                        onPress={() => router.push({ pathname: "/bills/[id]", params: { id: l.ref } })}
+                      >
+                        <View style={styles.itemTopRow}>
+                          <View style={[styles.kindBadge, l.kind === "Sponsored" ? styles.kindSponsored : styles.kindCosponsored]}>
+                            <Text style={[styles.kindBadgeText, l.kind === "Sponsored" ? styles.kindSponsoredText : styles.kindCosponsoredText]}>
+                              {l.kind}
+                            </Text>
+                          </View>
+                          {l.date && <Text style={styles.listItemDate}>{fmtDate(l.date)}</Text>}
                         </View>
-                        {l.date && <Text style={styles.listItemDate}>{fmtDate(l.date)}</Text>}
-                      </View>
-                      <Text style={styles.listItemTitle}>{l.title}</Text>
-                      <Text style={styles.listItemMeta}>
-                        {l.ref}
-                        {l.policyArea ? ` · ${l.policyArea}` : ""}
-                      </Text>
-                    </Pressable>
+                        <Text style={styles.listItemTitle}>{l.title}</Text>
+                        <Text style={styles.listItemMeta}>
+                          {l.ref}
+                          {l.policyArea ? ` · ${l.policyArea}` : ""}
+                        </Text>
+                      </Pressable>
+                      {l.url ? (
+                        <Pressable
+                          onPress={() => Linking.openURL(l.url!)}
+                          hitSlop={8}
+                          style={styles.govArrow}
+                          accessibilityLabel="View on Congress.gov"
+                        >
+                          <Ionicons name="open-outline" size={18} color={colors.muted} />
+                        </Pressable>
+                      ) : null}
+                    </View>
                   ))
                 )}
                 {loadMore(recentLegislation.length, legVisible, () => setLegVisible((v) => v + 5))}
@@ -286,6 +303,9 @@ const styles = StyleSheet.create({
   loadMoreBtn: { marginTop: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: "#eef2ff", alignItems: "center" },
   loadMoreText: { color: colors.primary, fontWeight: "700", fontSize: 14 },
   listItem: { paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border },
+  legRow: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border },
+  legMain: { flex: 1 },
+  govArrow: { paddingLeft: 12, paddingVertical: 6, alignSelf: "center" },
   itemTopRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
   listItemTitle: { color: colors.title, fontWeight: "600", fontSize: 15, lineHeight: 20 },
   listItemMeta: { color: colors.muted, fontSize: 13, marginTop: 2 },
