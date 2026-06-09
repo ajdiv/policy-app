@@ -4,6 +4,7 @@ import { config, hasGemini, hasCongressGov, hasGoogleAuth } from "./config.js";
 import { initDb } from "./db/client.js";
 import { membersRouter } from "./routes/members.js";
 import { askRouter } from "./routes/ask.js";
+import { billsRouter } from "./routes/bills.js";
 import { authRouter } from "./routes/auth.js";
 
 initDb();
@@ -18,6 +19,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/members", membersRouter);
 app.use("/api/ask", askRouter);
+app.use("/api/bills", billsRouter);
 app.use("/api/auth", authRouter);
 
 app.listen(config.port, () => {

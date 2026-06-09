@@ -39,6 +39,14 @@ export default function RootLayout() {
             name="members/[id]"
             options={{ headerLeft: () => <HomeButton />, headerRight: () => <AuthButton /> }}
           />
+          <Stack.Screen
+            name="bills/index"
+            options={{ headerLeft: () => <HomeButton />, headerRight: () => <AuthButton /> }}
+          />
+          <Stack.Screen
+            name="bills/[id]"
+            options={{ headerLeft: () => <HomeButton />, headerRight: () => <AuthButton /> }}
+          />
         </Stack>
       </LinearGradient>
     </AuthProvider>

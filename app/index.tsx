@@ -209,6 +209,10 @@ export default function Home() {
           </View>
         </View>
 
+        <Pressable style={styles.billsLink} onPress={() => router.push({ pathname: "/bills" })}>
+          <Text style={styles.billsLinkText}>📜  Browse bills & partisan temperature  →</Text>
+        </Pressable>
+
         {loading && <ActivityIndicator style={{ marginTop: 24 }} color={colors.primary} />}
         {error && <Text style={styles.error}>{error}</Text>}
 
@@ -351,6 +355,8 @@ const styles = StyleSheet.create({
   acName: { color: colors.title, fontWeight: "700", fontSize: 15 },
   acMeta: { color: colors.muted, fontSize: 13, marginTop: 2 },
   acEmpty: { color: colors.muted, paddingHorizontal: 14, paddingVertical: 10 },
+  billsLink: { alignSelf: "center", marginTop: 14, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: "#eef2ff" },
+  billsLinkText: { color: colors.primaryDark, fontWeight: "700", fontSize: 14 },
   infoCard: {
     backgroundColor: colors.card,
     borderRadius: 18,

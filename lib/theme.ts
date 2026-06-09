@@ -32,6 +32,14 @@ export function stanceColors(label: string): { bg: string; text: string } {
   return { bg: colors.noteBg, text: colors.noteText }; // mixed / unclear
 }
 
+/** Colors for a partisan-temperature label (party-line → bipartisan). */
+export function tempColors(label: string): { bg: string; text: string; bar: string } {
+  if (/party-line/i.test(label)) return { bg: "#fee2e2", text: "#b91c1c", bar: "#ef4444" };
+  if (/leans/i.test(label)) return { bg: "#ffedd5", text: "#c2410c", bar: "#f97316" };
+  if (/mostly bipartisan/i.test(label)) return { bg: "#ccfbf1", text: "#0f766e", bar: "#14b8a6" };
+  return { bg: "#dcfce7", text: "#15803d", bar: "#22c55e" }; // bipartisan
+}
+
 /** Color for a vote cast (Yea/Nay/other). */
 export function castColors(cast?: string): { bg: string; text: string } {
   if (cast === "Yea") return { bg: colors.yeaBg, text: colors.yeaText };

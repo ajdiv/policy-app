@@ -146,4 +146,56 @@ export async function loginWithGoogle(accessToken: string): Promise<{ token: str
   return data as { token: string; user: AuthUser };
 }
 
+// --- Bills explorer ---
+
+export interface Temperature {
+  score: number; // 0-100 (higher = more bipartisan)
+  label: string;
+  dem: { yea: number; nay: number };
+  rep: { yea: number; nay: number };
+}
+
+export interface BillSummary {
+  id: string;
+  title: string;
+  policyArea: string | null;
+  billType: string;
+  number: number;
+  url: string | null;
+  congress: number;
+  result: string | null;
+  date: string | null;
+  temperature: Temperature | null;
+}
+
+export interface BillVote {
+  cast: string;
+  id: string;
+  name: string;
+  party: string | null;
+  state: string | null;
+}
+
+export interface BillDetail {
+  bill: Omit<BillSummary, "result" | "date" | "temperature">;
+  temperature: Temperature | null;
+  primaryResult: string | null;
+  primaryDate: string | null;
+  rollcalls: Array<{ id: string; date: string | null; result: string | null; number: number; temperature: Temperature | null }>;
+  votes: BillVote[];
+}
+
+export async function searchBills(params: { q?: string; policyArea?: string; limit?: number }): Promise<BillSummary[]> {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set("q", params.q);
+  if (params.policyArea) qs.set("policyArea", params.policyArea);
+  if (params.limit) qs.set("limit", String(params.limit));
+  const data = await getJson<{ bills: BillSummary[] }>(`/api/bills?${qs.toString()}`);
+  return data.bills;
+}
+
+export async function getBill(id: string): Promise<BillDetail> {
+  return getJson(`/api/bills/${encodeURIComponent(id)}`);
+}
+
 export { BASE_URL };
