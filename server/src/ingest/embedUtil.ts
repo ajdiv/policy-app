@@ -8,7 +8,12 @@ const EMBED_DELAY_MS = Number(process.env.EMBED_DELAY_MS ?? 60000);
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Embed a batch, retrying on 429 using the delay the API suggests. */
+// Don't sleep longer than this on a single retry — a *daily* quota error can
+// report a multi-hour retryDelay, which would hang an unattended run. If the
+// suggested wait exceeds the cap, give up (caller stops gracefully + resumes later).
+const MAX_RETRY_WAIT_MS = 90_000;
+
+/** Embed a batch, retrying on transient errors using the delay the API suggests. */
 async function embedBatchWithRetry(texts: string[], attempt = 0): Promise<number[][]> {
   try {
     return await embed(texts);
@@ -17,6 +22,9 @@ async function embedBatchWithRetry(texts: string[], attempt = 0): Promise<number
       // 429 = rate limit (use API delay); otherwise transient network/overload backoff.
       const match = /"retryDelay":"(\d+)s"/.exec(String(e?.message ?? ""));
       const waitMs = e?.status === 429 ? (match ? Number(match[1]) : 60) * 1000 + 1500 : 2000 * 2 ** attempt;
+      if (waitMs > MAX_RETRY_WAIT_MS) {
+        throw new Error(`embedding rate limit needs ${Math.round(waitMs / 1000)}s wait (> cap) — likely a daily quota; stopping.`);
+      }
       console.warn(`[embed] transient error (${e?.status ?? "network"}). Waiting ${Math.round(waitMs / 1000)}s…`);
       await sleep(waitMs);
       return embedBatchWithRetry(texts, attempt + 1);

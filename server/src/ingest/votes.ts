@@ -1,3 +1,6 @@
+import { statSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { db, sqlite } from "../db/client.js";
 import { bills, rollcalls } from "../db/schema.js";
 import {
@@ -17,6 +20,24 @@ const SESSIONS = (process.env.INGEST_SESSIONS ?? "1,2")
   .map((s) => Number(s.trim()))
   .filter(Boolean);
 const MAX_ROLLCALLS = Number(process.env.INGEST_MAX_ROLLCALLS ?? 250);
+/** Hard stop: halt ingestion once the DB reaches this size (MB). */
+const MAX_DB_MB = Number(process.env.INGEST_MAX_DB_MB ?? 500);
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DB_PATH = join(__dirname, "..", "..", "data", "policy.db");
+
+/** Current DB size in MB (main file + WAL). */
+function dbSizeMB(): number {
+  let bytes = 0;
+  for (const f of [DB_PATH, `${DB_PATH}-wal`]) {
+    try {
+      bytes += statSync(f).size;
+    } catch {
+      /* file may not exist */
+    }
+  }
+  return bytes / (1024 * 1024);
+}
 
 /** Aye/No/Not Voting/Present -> normalized vote label. */
 function normCast(raw: string): string {
@@ -67,7 +88,18 @@ export async function ingestHouseVotes() {
 
       for (const rc of rollCalls) {
         if (ingested >= MAX_ROLLCALLS) break outer;
+        // Hard stop on DB size (checked periodically to bound cost).
+        if (ingested % 20 === 0 && dbSizeMB() >= MAX_DB_MB) {
+          console.warn(`\n[votes] DB reached ${dbSizeMB().toFixed(0)}MB (cap ${MAX_DB_MB}MB) — stopping ingestion.`);
+          break outer;
+        }
         const rcId = `${rc.congress}-${rc.session}-${rc.rollCallNumber}`;
+
+        // Resume: skip roll calls already ingested (avoids re-fetching member votes).
+        if (sqlite.prepare(`SELECT 1 FROM rollcalls WHERE id = ?`).get(rcId)) {
+          ingested++;
+          continue;
+        }
 
         // Resolve the bill (once per distinct bill).
         let billId: string | null = null;
@@ -141,7 +173,7 @@ export async function ingestHouseVotes() {
         tx();
 
         ingested++;
-        if (ingested % 25 === 0) console.log(`[votes] processed ${ingested}/${MAX_ROLLCALLS} roll calls…`);
+        if (ingested % 25 === 0) console.log(`[votes] processed ${ingested} roll calls (${dbSizeMB().toFixed(0)}MB)…`);
       }
     }
   }
