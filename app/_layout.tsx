@@ -1,4 +1,5 @@
 import { Stack, useRouter } from "expo-router";
+import { ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,9 +36,16 @@ function HeaderRight() {
 }
 
 function ThemedApp() {
-  const { colors } = useTheme();
+  const { colors, scheme, isDark } = useTheme();
+  // Make React Navigation's scene background transparent so our gradient shows
+  // through (its default theme paints an opaque rgb(242,242,242) over it).
+  const base = isDark ? DarkTheme : DefaultTheme;
+  const navTheme = { ...base, colors: { ...base.colors, background: "transparent", card: "transparent" } };
   return (
-    <LinearGradient colors={colors.bgGradient} style={StyleSheet.absoluteFill}>
+    // key on scheme so the web gradient repaints on theme change (its `colors`
+    // prop alone doesn't always trigger a repaint in expo-linear-gradient web).
+    <LinearGradient key={scheme} colors={colors.bgGradient} style={StyleSheet.absoluteFill}>
+      <NavThemeProvider value={navTheme}>
       <Stack
         screenOptions={{
           headerTransparent: true,
@@ -61,6 +69,7 @@ function ThemedApp() {
           options={{ headerLeft: () => <HomeButton />, headerRight: () => <HeaderRight /> }}
         />
       </Stack>
+      </NavThemeProvider>
     </LinearGradient>
   );
 }
