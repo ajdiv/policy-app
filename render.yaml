@@ -34,6 +34,10 @@ services:
       # with an empty database.
       - key: DB_DOWNLOAD_URL
         sync: false
+      # Google OAuth Web client ID — server-side audience check. Leave blank to
+      # keep sign-in disabled. Must match EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID below.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
 
   # ---- Frontend: Expo static web export ----
   - type: web
@@ -44,6 +48,11 @@ services:
     envVars:
       - key: EXPO_PUBLIC_API_URL
         value: https://policy-app-api.onrender.com
+      # Same Google OAuth Web client ID as GOOGLE_CLIENT_ID above. Baked into the
+      # bundle at build time, so set it BEFORE building, then redeploy this
+      # service after any change. Leave blank to keep the sign-in button hidden.
+      - key: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+        sync: false
     routes:
       # SPA fallback so deep links / dynamic routes ([id]) resolve client-side.
       - type: rewrite
