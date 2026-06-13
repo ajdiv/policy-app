@@ -48,15 +48,25 @@ export interface RetrievedRecord {
 
 /**
  * Nearest-neighbor search over all embeddings, optionally narrowed to a
- * source type and/or a candidate set of source ids (e.g. one president's EOs).
- * We over-fetch `k` globally then post-filter — fine for the MVP corpus.
+ * source type and/or a candidate set of source ids (e.g. one president's docs).
+ *
+ * The KNN runs globally then we post-filter by sourceType/sourceIds. A small
+ * global `k` would let unrelated rows (e.g. the much larger bill corpus) crowd
+ * the candidate set out of the top-k before the filter is applied — so when a
+ * filter is in play we widen `k` to cover the whole corpus. The corpus is small
+ * (a few thousand rows), so a full-scan KNN is cheap.
  */
 export function search(
   queryVector: number[],
   opts: { k?: number; sourceType?: string; sourceIds?: string[]; limit?: number } = {},
 ): RetrievedRecord[] {
-  const k = opts.k ?? 100;
   const limit = opts.limit ?? 8;
+  const filtered = !!(opts.sourceType || opts.sourceIds);
+  let k = opts.k ?? 100;
+  if (filtered) {
+    const total = (sqlite.prepare(`SELECT COUNT(*) AS c FROM vec_items`).get() as { c: number }).c;
+    k = Math.max(k, total);
+  }
   const rows = sqlite
     .prepare(
       `SELECT s.source_type AS sourceType, s.source_id AS sourceId, s.content AS content, v.distance AS distance

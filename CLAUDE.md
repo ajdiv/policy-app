@@ -74,7 +74,9 @@ There is **no test suite** in this repo. Verify changes with `tsc --noEmit` (bot
 `POST /api/ask {memberId, question, history?}` → [routes/ask.ts](server/src/routes/ask.ts) →
 `answerQuestion()` in [rag/ask.ts](server/src/rag/ask.ts):
 1. Resolve the member and their **role**, which determines the record source —
-   **legislators** answer from roll-call votes/bills; the **president** answers from executive orders.
+   **legislators** answer from roll-call votes/bills; the **president** answers from presidential
+   actions (executive orders, memoranda, proclamations, determinations — all stored in the
+   `executive_orders` table, distinguished by a `subtype` column).
 2. Embed the question (`rag/gemini.ts`) and nearest-neighbor search the `vec_items` index
    (`rag/embeddingStore.ts`) to pull the relevant records.
 3. Build a prompt containing **only** those records + strict "cite or say you don't know"
@@ -119,9 +121,11 @@ Because `EXPO_PUBLIC_*` vars are compiled in, the web app must be **rebuilt** af
 ## Ingestion
 
 `npm run ingest` (in `server/`) pulls from Congress.gov (members, bills, recent House roll calls) and
-the Federal Register (executive orders, no key), normalizes into SQLite, and computes a Gemini
-embedding per bill/EO. It is **throttled, 429-retrying, and resumable** — re-running only embeds
-records lacking a vector, so adding `GEMINI_API_KEY` later and re-running backfills embeddings.
+the Federal Register (all presidential actions — executive orders, memoranda, proclamations,
+determinations — no key), normalizes into SQLite, and computes a Gemini embedding per bill/action.
+It is **throttled, 429-retrying, and resumable** — re-running only embeds records lacking a vector,
+so adding `GEMINI_API_KEY` later and re-running backfills embeddings. The president's full document
+set is ingested by default; `INGEST_MAX_EOS` is an optional safety ceiling (unset = unbounded).
 Coverage knobs (`INGEST_CONGRESSES`, `INGEST_MAX_ROLLCALLS`, …) live in `server/.env`.
 
 ## Deployment

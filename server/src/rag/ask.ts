@@ -248,7 +248,7 @@ async function answerPresident(member: Base, question: string, history: ChatTurn
   hits.forEach((h, i) => {
     const eo = byId.get(h.sourceId);
     if (!eo) return;
-    const ref = eo.eoNumber ? `EO ${eo.eoNumber}` : `EO ${eo.id}`;
+    const ref = eo.eoNumber ? `EO ${eo.eoNumber}` : `${eo.subtype ?? "Presidential Action"} ${eo.id}`;
     citations.push({
       index: i + 1,
       type: "executive_order",
@@ -265,8 +265,8 @@ async function answerPresident(member: Base, question: string, history: ChatTurn
   }
 
   const prompt = [
-    `You are a nonpartisan assistant in an ongoing conversation about ${member.fullName}. Answer the user's LATEST message using ONLY the executive orders below.`,
-    `Cite each claim with the order in brackets, e.g. [EO 14206]. If the records don't address it, say so. Be concise and neutral.`,
+    `You are a nonpartisan assistant in an ongoing conversation about ${member.fullName}. Answer the user's LATEST message using ONLY the presidential actions below (executive orders, memoranda, proclamations, and determinations).`,
+    `Cite each claim in brackets using the label shown for the record, e.g. [EO 14206] or [Memorandum 2025-01966]. If the records don't address it, say so. Be concise and neutral.`,
     ``,
     renderHistory(history),
     ...blocks.map((b, i) => `--- Record ${i + 1} ---\n${b}`),

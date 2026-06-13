@@ -62,10 +62,16 @@ export const votes = sqliteTable("votes", {
   cast: text("cast"), // Yea | Nay | Present | Not Voting
 });
 
-/** Executive orders — the President's record. */
+/**
+ * Presidential actions — the President's record. Despite the table name, this
+ * holds every Federal Register presidential document (executive orders,
+ * memoranda, proclamations, determinations); `subtype` distinguishes them and
+ * `eoNumber` is only set for executive orders.
+ */
 export const executiveOrders = sqliteTable("executive_orders", {
   id: text("id").primaryKey(), // Federal Register document_number
   eoNumber: integer("eo_number"),
+  subtype: text("subtype"), // "Executive Order" | "Memorandum" | "Proclamation" | …
   presidentId: text("president_id"), // FK -> members.id
   presidentName: text("president_name"),
   title: text("title").notNull(),

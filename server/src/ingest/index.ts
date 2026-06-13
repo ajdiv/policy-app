@@ -1,7 +1,7 @@
 import { hasCongressGov } from "../config.js";
 import { db, initDb, sqlite } from "../db/client.js";
 import { members, executiveOrders } from "../db/schema.js";
-import { fetchExecutiveOrders } from "../sources/federalRegister.js";
+import { fetchPresidentialActions } from "../sources/federalRegister.js";
 import { fetchCurrentMembers } from "../sources/congressGov.js";
 import { embedPending, type EmbedRow } from "./embedUtil.js";
 import { ingestHouseVotes } from "./votes.js";
@@ -11,13 +11,14 @@ const PRESIDENT_SLUGS = (process.env.INGEST_PRESIDENTS ?? "donald-trump")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
-const MAX_EOS = Number(process.env.INGEST_MAX_EOS ?? 300);
+// Optional safety ceiling; unbounded by default — a president's document set is finite and modest.
+const MAX_ACTIONS = process.env.INGEST_MAX_EOS ? Number(process.env.INGEST_MAX_EOS) : Infinity;
 
 async function ingestExecutiveOrders() {
   for (const slug of PRESIDENT_SLUGS) {
-    console.log(`\n[EO] Fetching executive orders for "${slug}"...`);
-    const eos = await fetchExecutiveOrders(slug, MAX_EOS);
-    console.log(`[EO] Got ${eos.length} executive orders.`);
+    console.log(`\n[EO] Fetching presidential actions for "${slug}"...`);
+    const eos = await fetchPresidentialActions(slug, MAX_ACTIONS);
+    console.log(`[EO] Got ${eos.length} presidential actions.`);
     if (eos.length === 0) continue;
 
     const presidentName = eos.find((e) => e.presidentName)?.presidentName ?? slug;
@@ -42,6 +43,7 @@ async function ingestExecutiveOrders() {
         .values({
           id: eo.documentNumber,
           eoNumber: eo.eoNumber,
+          subtype: eo.subtype,
           presidentId,
           presidentName,
           title: eo.title,
@@ -53,11 +55,11 @@ async function ingestExecutiveOrders() {
         })
         .onConflictDoUpdate({
           target: executiveOrders.id,
-          set: { title: eo.title, abstract: eo.abstract, presidentId },
+          set: { title: eo.title, abstract: eo.abstract, subtype: eo.subtype, presidentId },
         })
         .run();
     }
-    console.log(`[EO] Stored ${eos.length} orders for ${presidentName}.`);
+    console.log(`[EO] Stored ${eos.length} presidential actions for ${presidentName}.`);
   }
 }
 
@@ -94,19 +96,28 @@ async function ingestMembers() {
   console.log(`[members] Stored ${list.length} members.`);
 }
 
-/** Embed every executive order that doesn't yet have an embedding. */
+/** Embed every presidential action that doesn't yet have an embedding. */
 async function embedExecutiveOrders() {
   const pending = sqlite
     .prepare(
-      `SELECT eo.id AS id, eo.title AS title, eo.abstract AS abstract, eo.topics AS topics
+      `SELECT eo.id AS id, eo.subtype AS subtype, eo.title AS title, eo.abstract AS abstract, eo.topics AS topics
        FROM executive_orders eo
        LEFT JOIN embedding_sources s ON s.source_type = 'executive_order' AND s.source_id = eo.id
        WHERE s.id IS NULL`,
     )
-    .all() as Array<{ id: string; title: string; abstract: string | null; topics: string | null }>;
+    .all() as Array<{
+    id: string;
+    subtype: string | null;
+    title: string;
+    abstract: string | null;
+    topics: string | null;
+  }>;
   const rows: EmbedRow[] = pending.map((r) => {
     const topics = r.topics ? (JSON.parse(r.topics) as string[]).join(", ") : "";
-    return { sourceId: r.id, text: [r.title, r.abstract ?? "", topics].filter(Boolean).join("\n") };
+    return {
+      sourceId: r.id,
+      text: [r.subtype ?? "", r.title, r.abstract ?? "", topics].filter(Boolean).join("\n"),
+    };
   });
   await embedPending("executive_order", rows);
 }
