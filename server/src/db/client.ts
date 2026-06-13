@@ -93,6 +93,7 @@ export function initDb() {
     CREATE TABLE IF NOT EXISTS executive_orders (
       id TEXT PRIMARY KEY,
       eo_number INTEGER,
+      subtype TEXT,
       president_id TEXT,
       president_name TEXT,
       title TEXT NOT NULL,
@@ -131,6 +132,7 @@ export function initDb() {
   // Additive migrations: bring an older Phase 1 DB up to the current schema
   // without dropping data (CREATE TABLE IF NOT EXISTS won't add new columns).
   ensureColumns("bills", { policy_area: "TEXT", url: "TEXT" });
+  ensureColumns("executive_orders", { subtype: "TEXT" });
   ensureColumns("rollcalls", {
     session: "INTEGER",
     vote_type: "TEXT",
