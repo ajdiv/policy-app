@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ask, type AskResult, type Citation, type ChatTurn } from "../lib/api";
-import { colors, stanceColors, castColors, space, radius, fontSize, fontWeight, lineHeight, shadow } from "../lib/theme";
+import { makeShadow, stanceColors, castColors, space, radius, fontSize, fontWeight, lineHeight, type Palette } from "../lib/theme";
+import { useTheme } from "../lib/theme-context";
 import { useWideLayout } from "../lib/useWideLayout";
 
 const LEGISLATOR_SUGGESTIONS = [
@@ -36,6 +37,8 @@ interface Exchange {
 }
 
 export function ChatBubble({ memberId, role, name }: { memberId: string; role: string; name: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { height } = useWindowDimensions();
   const wide = useWideLayout(720);
   const isPresident = role === "president";
@@ -79,7 +82,7 @@ export function ChatBubble({ memberId, role, name }: { memberId: string; role: s
   if (!open) {
     return (
       <Pressable style={styles.fab} onPress={() => setOpen(true)} accessibilityLabel="Ask the AI about this politician">
-        <Ionicons name="chatbubble-ellipses" size={26} color="#fff" />
+        <Ionicons name="chatbubble-ellipses" size={26} color={colors.onPrimary} />
       </Pressable>
     );
   }
@@ -162,7 +165,7 @@ export function ChatBubble({ memberId, role, name }: { memberId: string; role: s
           onPress={() => send()}
           disabled={busy || !input.trim()}
         >
-          <Ionicons name="send" size={16} color="#fff" />
+          <Ionicons name="send" size={16} color={colors.onPrimary} />
         </Pressable>
       </View>
     </View>
@@ -170,18 +173,20 @@ export function ChatBubble({ memberId, role, name }: { memberId: string; role: s
 }
 
 function AiMessage({ result }: { result: AskResult }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const stance = result.stance;
   return (
     <View style={styles.aiBubble}>
       {stance && stance.total > 0 && (
-        <View style={[styles.stanceBadge, { backgroundColor: stanceColors(stance.label).bg }]}>
-          <Text style={[styles.stanceText, { color: stanceColors(stance.label).text }]}>
+        <View style={[styles.stanceBadge, { backgroundColor: stanceColors(colors, stance.label).bg }]}>
+          <Text style={[styles.stanceText, { color: stanceColors(colors, stance.label).text }]}>
             {stance.label} ({stance.confidence}%)
           </Text>
         </View>
       )}
-      <Text style={styles.answerText}>{renderAnswerWithLinks(result.answer, result.citations)}</Text>
+      <Text style={styles.answerText}>{renderAnswerWithLinks(result.answer, result.citations, styles)}</Text>
 
       {result.citations.length > 0 && (
         <View style={styles.sources}>
@@ -200,6 +205,8 @@ function AiMessage({ result }: { result: AskResult }) {
 }
 
 function SourceCard({ c }: { c: Citation }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.sourceCard}>
       <View style={styles.sourceTop}>
@@ -207,8 +214,8 @@ function SourceCard({ c }: { c: Citation }) {
           <Text style={styles.numBadgeText}>{c.index}</Text>
         </View>
         {c.type === "vote" && c.cast ? (
-          <View style={[styles.castBadge, { backgroundColor: castColors(c.cast).bg }]}>
-            <Text style={[styles.castText, { color: castColors(c.cast).text }]}>{c.cast}</Text>
+          <View style={[styles.castBadge, { backgroundColor: castColors(colors, c.cast).bg }]}>
+            <Text style={[styles.castText, { color: castColors(colors, c.cast).text }]}>{c.cast}</Text>
           </View>
         ) : (
           <View style={[styles.castBadge, { backgroundColor: colors.evidenceBg }]}>
@@ -229,7 +236,7 @@ function SourceCard({ c }: { c: Citation }) {
 }
 
 /** Render answer prose, turning inline citations like [2] or [EO 14206] into links. */
-function renderAnswerWithLinks(text: string, citations: Citation[]) {
+function renderAnswerWithLinks(text: string, citations: Citation[], styles: ReturnType<typeof makeStyles>) {
   const byIndex = new Map(citations.map((c) => [String(c.index), c]));
   const byRef = new Map(citations.map((c) => [c.ref.toLowerCase(), c]));
   return text.split(/(\[[^\]]+\])/g).map((part, i) => {
@@ -249,7 +256,9 @@ function renderAnswerWithLinks(text: string, citations: Citation[]) {
   });
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: Palette) {
+  const sh = makeShadow(c);
+  return StyleSheet.create({
   fab: {
     position: "absolute",
     bottom: 24,
@@ -257,22 +266,22 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     alignItems: "center",
     justifyContent: "center",
-    ...shadow.fab,
+    ...sh.fab,
     zIndex: 1000,
   },
   panel: {
     position: "absolute",
     bottom: 24,
     right: 24,
-    backgroundColor: "#fff",
+    backgroundColor: c.card,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     overflow: "hidden",
-    ...shadow.floating,
+    ...sh.floating,
     zIndex: 1000,
   },
   panelSheet: { top: 56, left: 8, right: 8, bottom: 8, width: undefined, height: undefined },
@@ -284,50 +293,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingVertical: space.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: "#fafbff",
+    borderBottomColor: c.border,
+    backgroundColor: c.chatHeader,
   },
-  aiAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  aiAvatarText: { color: "#fff", fontWeight: fontWeight.bold, fontSize: fontSize.sm },
-  headerTitle: { fontWeight: fontWeight.bold, color: colors.text, fontSize: fontSize.lg },
-  headerSub: { color: colors.muted, fontSize: fontSize.sm },
+  aiAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: c.primary, alignItems: "center", justifyContent: "center" },
+  aiAvatarText: { color: c.onPrimary, fontWeight: fontWeight.bold, fontSize: fontSize.sm },
+  headerTitle: { fontWeight: fontWeight.bold, color: c.text, fontSize: fontSize.lg },
+  headerSub: { color: c.muted, fontSize: fontSize.sm },
 
   body: { flex: 1 },
-  intro: { color: colors.muted, fontSize: fontSize.md, lineHeight: lineHeight.normal, marginBottom: space.md },
-  noteBox: { backgroundColor: colors.noteBg, borderWidth: 1, borderColor: colors.noteBorder, borderRadius: radius.md, padding: space.md, marginBottom: space.md },
-  noteText: { color: colors.noteText, fontSize: fontSize.sm, lineHeight: lineHeight.snug },
-  tryTitle: { fontWeight: fontWeight.semibold, color: colors.text, marginBottom: space.sm, fontSize: fontSize.base },
-  suggest: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.md, marginBottom: space.sm, backgroundColor: "#fbfbff" },
-  suggestText: { color: colors.primaryDark, fontSize: fontSize.base },
+  intro: { color: c.muted, fontSize: fontSize.md, lineHeight: lineHeight.normal, marginBottom: space.md },
+  noteBox: { backgroundColor: c.noteBg, borderWidth: 1, borderColor: c.noteBorder, borderRadius: radius.md, padding: space.md, marginBottom: space.md },
+  noteText: { color: c.noteText, fontSize: fontSize.sm, lineHeight: lineHeight.snug },
+  tryTitle: { fontWeight: fontWeight.semibold, color: c.text, marginBottom: space.sm, fontSize: fontSize.base },
+  suggest: { borderWidth: 1, borderColor: c.border, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.md, marginBottom: space.sm, backgroundColor: c.card },
+  suggestText: { color: c.primaryDark, fontSize: fontSize.base },
 
-  userBubble: { alignSelf: "flex-end", maxWidth: "85%", backgroundColor: colors.primary, borderRadius: radius.md, borderBottomRightRadius: 4, paddingHorizontal: space.md, paddingVertical: space.sm },
-  userText: { color: "#fff", fontSize: fontSize.md, lineHeight: lineHeight.snug },
-  aiBubble: { alignSelf: "flex-start", maxWidth: "92%", backgroundColor: "#f4f6fb", borderRadius: radius.md, borderBottomLeftRadius: 4, padding: space.md },
+  userBubble: { alignSelf: "flex-end", maxWidth: "85%", backgroundColor: c.primary, borderRadius: radius.md, borderBottomRightRadius: 4, paddingHorizontal: space.md, paddingVertical: space.sm },
+  userText: { color: c.onPrimary, fontSize: fontSize.md, lineHeight: lineHeight.snug },
+  aiBubble: { alignSelf: "flex-start", maxWidth: "92%", backgroundColor: c.aiBubble, borderRadius: radius.md, borderBottomLeftRadius: 4, padding: space.md },
   pending: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: space.sm },
 
   stanceBadge: { alignSelf: "flex-start", paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.md, marginBottom: space.sm },
   stanceText: { fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
-  answerText: { color: colors.text, fontSize: fontSize.md, lineHeight: lineHeight.normal },
-  inlineLink: { color: colors.primary, fontWeight: fontWeight.semibold, textDecorationLine: "underline" },
+  answerText: { color: c.text, fontSize: fontSize.md, lineHeight: lineHeight.normal },
+  inlineLink: { color: c.primary, fontWeight: fontWeight.semibold, textDecorationLine: "underline" },
 
   sources: { marginTop: space.md },
   sourcesToggle: { flexDirection: "row", alignItems: "center", gap: space.xs, paddingVertical: space.xs },
-  sourcesToggleText: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.base },
-  sourceCard: { backgroundColor: "#fff", borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: space.md, marginTop: space.sm },
+  sourcesToggleText: { color: c.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.base },
+  sourceCard: { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: radius.md, padding: space.md, marginTop: space.sm },
   sourceTop: { flexDirection: "row", alignItems: "center", gap: space.sm, marginBottom: space.xs },
-  numBadge: { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  numBadgeText: { color: "#fff", fontWeight: fontWeight.bold, fontSize: fontSize.xs },
+  numBadge: { width: 20, height: 20, borderRadius: 10, backgroundColor: c.primary, alignItems: "center", justifyContent: "center" },
+  numBadgeText: { color: c.onPrimary, fontWeight: fontWeight.bold, fontSize: fontSize.xs },
   castBadge: { paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.sm },
   castText: { fontWeight: fontWeight.semibold, fontSize: fontSize.xs },
-  sourceTitle: { color: colors.title, fontWeight: fontWeight.semibold, fontSize: fontSize.base, lineHeight: lineHeight.snug },
-  sourceRef: { color: colors.muted, fontSize: fontSize.sm, marginTop: 1 },
-  sourceWhy: { color: colors.text, fontSize: fontSize.sm, lineHeight: lineHeight.tight, marginTop: space.sm },
-  sourceLink: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm, marginTop: space.sm },
+  sourceTitle: { color: c.title, fontWeight: fontWeight.semibold, fontSize: fontSize.base, lineHeight: lineHeight.snug },
+  sourceRef: { color: c.muted, fontSize: fontSize.sm, marginTop: 1 },
+  sourceWhy: { color: c.text, fontSize: fontSize.sm, lineHeight: lineHeight.tight, marginTop: space.sm },
+  sourceLink: { color: c.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm, marginTop: space.sm },
 
-  inputBar: { flexDirection: "row", alignItems: "center", gap: space.sm, padding: space.md, borderTopWidth: 1, borderTopColor: colors.border },
-  input: { flex: 1, backgroundColor: "#f4f6fb", borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.md, fontSize: fontSize.md, color: colors.text },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  inputBar: { flexDirection: "row", alignItems: "center", gap: space.sm, padding: space.md, borderTopWidth: 1, borderTopColor: c.border },
+  input: { flex: 1, backgroundColor: c.aiBubble, borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.md, fontSize: fontSize.md, color: c.text },
+  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: c.primary, alignItems: "center", justifyContent: "center" },
 
-  muted: { color: colors.muted, fontSize: fontSize.base },
-  error: { color: colors.nayText, fontSize: fontSize.base },
-});
+  muted: { color: c.muted, fontSize: fontSize.base },
+  error: { color: c.nayText, fontSize: fontSize.base },
+  });
+}

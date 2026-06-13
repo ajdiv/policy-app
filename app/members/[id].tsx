@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -20,7 +20,8 @@ import {
   type LegislationItem,
   type RecordItem,
 } from "../../lib/api";
-import { colors, castColors, space, radius, fontSize, fontWeight, lineHeight, shadow, maxWidth } from "../../lib/theme";
+import { makeShadow, castColors, stanceColors, partyColor, space, radius, fontSize, fontWeight, lineHeight, maxWidth, type Palette } from "../../lib/theme";
+import { useTheme } from "../../lib/theme-context";
 import { ChatBubble } from "../../components/ChatBubble";
 import { useWideLayout } from "../../lib/useWideLayout";
 
@@ -28,6 +29,8 @@ export default function Profile() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const wide = useWideLayout(920);
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [member, setMember] = useState<Member | null>(null);
   const [recordCount, setRecordCount] = useState(0);
@@ -108,8 +111,8 @@ export default function Profile() {
               </Text>
               <View style={styles.badgeRow}>
                 {member.party ? (
-                  <View style={[styles.partyBadge, { backgroundColor: partyColor(member.party).bg }]}>
-                    <Text style={[styles.partyBadgeText, { color: partyColor(member.party).text }]}>{member.party}</Text>
+                  <View style={[styles.partyBadge, { backgroundColor: partyColor(colors, member.party).bg }]}>
+                    <Text style={[styles.partyBadgeText, { color: partyColor(colors, member.party).text }]}>{member.party}</Text>
                   </View>
                 ) : null}
                 {tenure ? (
@@ -153,7 +156,7 @@ export default function Profile() {
                 </Pressable>
               ))
             )}
-            {loadMore(executiveOrders.length, eoVisible, () => setEoVisible((v) => v + 5))}
+            {loadMore(executiveOrders.length, eoVisible, () => setEoVisible((v) => v + 5), styles)}
           </View>
         ) : (
           <View style={[styles.columns, !wide && { flexDirection: "column" }]}>
@@ -196,7 +199,7 @@ export default function Profile() {
                     </View>
                   ))
                 )}
-                {loadMore(recentLegislation.length, legVisible, () => setLegVisible((v) => v + 5))}
+                {loadMore(recentLegislation.length, legVisible, () => setLegVisible((v) => v + 5), styles)}
               </View>
             </View>
             <View style={[styles.colRight, wide && { flex: 1 }]}>
@@ -213,8 +216,8 @@ export default function Profile() {
                   recentVotes.slice(0, votesVisible).map((v, i) => (
                     <Pressable key={i} style={styles.listItem} onPress={() => v.url && Linking.openURL(v.url)}>
                       <View style={styles.itemTopRow}>
-                        <View style={[styles.voteBadge, { backgroundColor: castColors(v.cast).bg }]}>
-                          <Text style={[styles.voteBadgeText, { color: castColors(v.cast).text }]}>{v.cast}</Text>
+                        <View style={[styles.voteBadge, { backgroundColor: castColors(colors, v.cast).bg }]}>
+                          <Text style={[styles.voteBadgeText, { color: castColors(colors, v.cast).text }]}>{v.cast}</Text>
                         </View>
                         {v.date && <Text style={styles.listItemDate}>{fmtDate(v.date)}</Text>}
                       </View>
@@ -223,7 +226,7 @@ export default function Profile() {
                     </Pressable>
                   ))
                 )}
-                {votesAvailable && loadMore(recentVotes.length, votesVisible, () => setVotesVisible((v) => v + 5))}
+                {votesAvailable && loadMore(recentVotes.length, votesVisible, () => setVotesVisible((v) => v + 5), styles)}
               </View>
             </View>
           </View>
@@ -247,7 +250,7 @@ function fmtDate(d: string): string {
   return isNaN(dt.getTime()) ? d.slice(0, 10) : dt.toLocaleDateString("en-US");
 }
 /** A "Load more (N more)" button shown when a list has more rows than are visible. */
-function loadMore(total: number, visible: number, onMore: () => void) {
+function loadMore(total: number, visible: number, onMore: () => void, styles: ReturnType<typeof makeStyles>) {
   if (total <= visible) return null;
   return (
     <Pressable style={styles.loadMoreBtn} onPress={onMore}>
@@ -259,125 +262,122 @@ function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
 }
-function partyColor(party: string): { bg: string; text: string } {
-  if (/^D/i.test(party)) return { bg: "#dbeafe", text: "#1d4ed8" };
-  if (/^R/i.test(party)) return { bg: "#fee2e2", text: "#b91c1c" };
-  return { bg: "#e5e7eb", text: "#4b5563" };
-}
-
-const styles = StyleSheet.create({
+function makeStyles(c: Palette) {
+  const sh = makeShadow(c);
+  return StyleSheet.create({
   screen: { flex: 1 },
   page: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.giant, alignItems: "center" },
   shell: { width: "100%", maxWidth: maxWidth.wide, alignSelf: "center" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", padding: space.xl },
-  name: { fontSize: fontSize.display, fontWeight: fontWeight.bold, color: colors.title, letterSpacing: -0.5 },
-  meta: { color: colors.subtitle, marginTop: space.xs, fontSize: fontSize.xxl, fontWeight: fontWeight.medium },
+  name: { fontSize: fontSize.display, fontWeight: fontWeight.bold, color: c.title, letterSpacing: -0.5 },
+  meta: { color: c.subtitle, marginTop: space.xs, fontSize: fontSize.xxl, fontWeight: fontWeight.medium },
 
   profileCard: {
-    backgroundColor: colors.card,
+    backgroundColor: c.card,
     borderRadius: radius.xl,
     padding: space.xxl,
     borderWidth: 1,
-    borderColor: "#dfe3f3",
+    borderColor: c.borderStrong,
     marginBottom: space.xl,
-    ...shadow.raised,
+    ...sh.raised,
   },
   profileRow: { flexDirection: "row", alignItems: "center", gap: space.xxl },
-  headshot: { width: 132, height: 132, borderRadius: 18, backgroundColor: "#eef2ff", borderWidth: 3, borderColor: "#e0e7ff" },
+  headshot: { width: 132, height: 132, borderRadius: 18, backgroundColor: c.evidenceBg, borderWidth: 3, borderColor: c.kindSponsoredBg },
   headshotFallback: { alignItems: "center", justifyContent: "center" },
-  headshotInitials: { fontSize: 46, fontWeight: fontWeight.bold, color: colors.primary },
-  inlineLink: { color: colors.primary, fontWeight: fontWeight.semibold, textDecorationLine: "underline" },
+  headshotInitials: { fontSize: 46, fontWeight: fontWeight.bold, color: c.primary },
+  inlineLink: { color: c.primary, fontWeight: fontWeight.semibold, textDecorationLine: "underline" },
   badgeRow: { flexDirection: "row", alignItems: "center", gap: space.md, marginTop: space.md, flexWrap: "wrap" },
   partyBadge: { paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.md },
   partyBadgeText: { fontWeight: fontWeight.semibold, fontSize: fontSize.base },
-  factText: { color: colors.muted, fontSize: fontSize.md },
+  factText: { color: c.muted, fontSize: fontSize.md },
   positionsWrap: { marginTop: space.md },
-  positionsLabel: { color: colors.text, fontWeight: fontWeight.semibold, fontSize: fontSize.base, marginBottom: space.xs },
-  positionItem: { color: colors.muted, fontSize: fontSize.md, lineHeight: lineHeight.normal },
+  positionsLabel: { color: c.text, fontWeight: fontWeight.semibold, fontSize: fontSize.base, marginBottom: space.xs },
+  positionItem: { color: c.muted, fontSize: fontSize.md, lineHeight: lineHeight.normal },
 
-  sectionTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, marginBottom: space.xs },
-  loadMoreBtn: { marginTop: space.md, paddingVertical: space.md, borderRadius: radius.md, backgroundColor: "#eef2ff", alignItems: "center" },
-  loadMoreText: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.md },
-  listItem: { paddingVertical: space.md, borderTopWidth: 1, borderTopColor: colors.border },
-  legRow: { flexDirection: "row", alignItems: "center", paddingVertical: space.md, borderTopWidth: 1, borderTopColor: colors.border },
+  sectionTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: c.text, marginBottom: space.xs },
+  loadMoreBtn: { marginTop: space.md, paddingVertical: space.md, borderRadius: radius.md, backgroundColor: c.evidenceBg, alignItems: "center" },
+  loadMoreText: { color: c.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.md },
+  listItem: { paddingVertical: space.md, borderTopWidth: 1, borderTopColor: c.border },
+  legRow: { flexDirection: "row", alignItems: "center", paddingVertical: space.md, borderTopWidth: 1, borderTopColor: c.border },
   legMain: { flex: 1 },
   govArrow: { paddingLeft: space.md, paddingVertical: space.sm, alignSelf: "center" },
   itemTopRow: { flexDirection: "row", alignItems: "center", gap: space.sm, marginBottom: space.xs },
-  listItemTitle: { color: colors.title, fontWeight: fontWeight.medium, fontSize: fontSize.lg, lineHeight: lineHeight.normal },
-  listItemMeta: { color: colors.muted, fontSize: fontSize.base, marginTop: space.xs },
-  listItemDate: { color: colors.muted, fontSize: fontSize.sm, marginLeft: "auto" },
+  listItemTitle: { color: c.title, fontWeight: fontWeight.medium, fontSize: fontSize.lg, lineHeight: lineHeight.normal },
+  listItemMeta: { color: c.muted, fontSize: fontSize.base, marginTop: space.xs },
+  listItemDate: { color: c.muted, fontSize: fontSize.sm, marginLeft: "auto" },
   kindBadge: { paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.sm },
   kindBadgeText: { fontWeight: fontWeight.semibold, fontSize: fontSize.xs },
-  kindSponsored: { backgroundColor: "#e0e7ff" },
-  kindSponsoredText: { color: "#4338ca" },
-  kindCosponsored: { backgroundColor: "#f3f4f6" },
-  kindCosponsoredText: { color: "#6b7280" },
+  kindSponsored: { backgroundColor: c.kindSponsoredBg },
+  kindSponsoredText: { color: c.kindSponsoredText },
+  kindCosponsored: { backgroundColor: c.kindCosponsoredBg },
+  kindCosponsoredText: { color: c.kindCosponsoredText },
 
   columns: { flexDirection: "row", gap: space.lg, alignItems: "flex-start" },
   colLeft: {},
   colRight: {},
 
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: c.card,
     borderRadius: radius.lg,
     padding: space.xl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     marginBottom: space.lg,
-    ...shadow.card,
+    ...sh.card,
   },
   cardHeaderRow: { flexDirection: "row", alignItems: "center", gap: space.md, marginBottom: space.sm },
-  avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  avatarText: { color: "#fff", fontWeight: fontWeight.bold, fontSize: fontSize.base },
-  cardTitle: { fontSize: fontSize.xxxl, fontWeight: fontWeight.bold, color: colors.text },
-  cardDesc: { color: colors.muted, lineHeight: lineHeight.normal, marginBottom: space.md },
+  avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: c.primary, alignItems: "center", justifyContent: "center" },
+  avatarText: { color: c.onPrimary, fontWeight: fontWeight.bold, fontSize: fontSize.base },
+  cardTitle: { fontSize: fontSize.xxxl, fontWeight: fontWeight.bold, color: c.text },
+  cardDesc: { color: c.muted, lineHeight: lineHeight.normal, marginBottom: space.md },
 
-  noteBox: { backgroundColor: colors.noteBg, borderWidth: 1, borderColor: colors.noteBorder, borderRadius: radius.md, padding: space.md, marginBottom: space.lg },
-  noteTitle: { color: colors.noteText, fontWeight: fontWeight.bold, marginBottom: space.sm },
-  noteBullet: { color: colors.noteText, lineHeight: lineHeight.relaxed },
+  noteBox: { backgroundColor: c.noteBg, borderWidth: 1, borderColor: c.noteBorder, borderRadius: radius.md, padding: space.md, marginBottom: space.lg },
+  noteTitle: { color: c.noteText, fontWeight: fontWeight.bold, marginBottom: space.sm },
+  noteBullet: { color: c.noteText, lineHeight: lineHeight.relaxed },
 
-  tryTitle: { fontWeight: fontWeight.semibold, color: colors.text, marginBottom: space.md },
+  tryTitle: { fontWeight: fontWeight.semibold, color: c.text, marginBottom: space.md },
   suggestWrap: { flexDirection: "row", flexWrap: "wrap", gap: space.md },
-  suggestChip: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.md, backgroundColor: "#fbfbff", flexGrow: 1, flexBasis: "45%" },
-  suggestText: { color: colors.primaryDark, fontSize: fontSize.md },
+  suggestChip: { borderWidth: 1, borderColor: c.border, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: space.md, backgroundColor: c.card, flexGrow: 1, flexBasis: "45%" },
+  suggestText: { color: c.primaryDark, fontSize: fontSize.md },
 
-  questionBox: { borderLeftWidth: 3, borderLeftColor: colors.primary, backgroundColor: colors.evidenceBg, padding: space.md, borderRadius: radius.sm, marginBottom: space.md },
-  questionLabel: { color: colors.primaryDark, fontWeight: fontWeight.semibold, marginBottom: space.xs, fontSize: fontSize.base },
-  questionText: { color: colors.text, fontSize: fontSize.lg },
+  questionBox: { borderLeftWidth: 3, borderLeftColor: c.primary, backgroundColor: c.evidenceBg, padding: space.md, borderRadius: radius.sm, marginBottom: space.md },
+  questionLabel: { color: c.primaryDark, fontWeight: fontWeight.semibold, marginBottom: space.xs, fontSize: fontSize.base },
+  questionText: { color: c.text, fontSize: fontSize.lg },
   analysisRow: { flexDirection: "row", alignItems: "center", gap: space.md, marginBottom: space.md, flexWrap: "wrap" },
-  analysisLabel: { fontWeight: fontWeight.bold, color: colors.text, fontSize: fontSize.lg },
+  analysisLabel: { fontWeight: fontWeight.bold, color: c.text, fontSize: fontSize.lg },
   stanceBadge: { paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.pill },
   stanceText: { fontWeight: fontWeight.semibold, fontSize: fontSize.base },
-  answerText: { color: colors.text, fontSize: fontSize.lg, lineHeight: lineHeight.relaxed, marginBottom: space.md },
-  link: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.md },
+  answerText: { color: c.text, fontSize: fontSize.lg, lineHeight: lineHeight.relaxed, marginBottom: space.md },
+  link: { color: c.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.md },
 
   askBar: { flexDirection: "row", gap: space.md, alignItems: "center" },
-  askInput: { flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: space.lg, paddingVertical: space.md, fontSize: fontSize.lg, color: colors.text },
-  askBtn: { backgroundColor: colors.primary, paddingHorizontal: space.xl, paddingVertical: space.md, borderRadius: radius.md },
-  askBtnText: { color: "#fff", fontWeight: fontWeight.semibold, fontSize: fontSize.lg },
+  askInput: { flex: 1, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: radius.md, paddingHorizontal: space.lg, paddingVertical: space.md, fontSize: fontSize.lg, color: c.text },
+  askBtn: { backgroundColor: c.primary, paddingHorizontal: space.xl, paddingVertical: space.md, borderRadius: radius.md },
+  askBtnText: { color: c.onPrimary, fontWeight: fontWeight.semibold, fontSize: fontSize.lg },
 
   evidenceHeader: { flexDirection: "row", alignItems: "center", gap: space.sm, marginBottom: space.md },
-  greenDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#22c55e" },
+  greenDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: c.tempBipartisanBar },
   evidenceEmpty: { alignItems: "center", paddingVertical: space.xxxl, gap: space.md },
-  evidenceEmptyIcon: { fontSize: 40, color: "#c7cbe0" },
+  evidenceEmptyIcon: { fontSize: 40, color: c.muted },
 
-  summaryBox: { backgroundColor: "#f7f8fc", borderRadius: radius.md, padding: space.md, marginBottom: space.md },
-  summaryTitle: { color: colors.muted, fontSize: fontSize.sm, fontWeight: fontWeight.semibold, textTransform: "uppercase" },
-  summaryBig: { color: colors.text, fontWeight: fontWeight.bold, fontSize: fontSize.xl, marginVertical: space.xs },
+  summaryBox: { backgroundColor: c.summaryBg, borderRadius: radius.md, padding: space.md, marginBottom: space.md },
+  summaryTitle: { color: c.muted, fontSize: fontSize.sm, fontWeight: fontWeight.semibold, textTransform: "uppercase" },
+  summaryBig: { color: c.text, fontWeight: fontWeight.bold, fontSize: fontSize.xl, marginVertical: space.xs },
 
-  citationCard: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: space.md, marginBottom: space.md },
+  citationCard: { borderWidth: 1, borderColor: c.border, borderRadius: radius.md, padding: space.md, marginBottom: space.md },
   citationTop: { flexDirection: "row", alignItems: "center", gap: space.sm, marginBottom: space.sm },
-  numBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  numBadgeText: { color: "#fff", fontWeight: fontWeight.bold, fontSize: fontSize.sm },
+  numBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: c.primary, alignItems: "center", justifyContent: "center" },
+  numBadgeText: { color: c.onPrimary, fontWeight: fontWeight.bold, fontSize: fontSize.sm },
   voteBadge: { paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.sm },
   voteBadgeText: { fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
-  citationDate: { marginLeft: "auto", color: colors.muted, fontSize: fontSize.sm },
-  citationTitle: { color: colors.text, fontWeight: fontWeight.semibold, fontSize: fontSize.lg, lineHeight: lineHeight.normal },
-  citationRef: { color: colors.muted, fontSize: fontSize.base, marginTop: space.xs },
-  whyBox: { backgroundColor: colors.evidenceBg, borderRadius: radius.sm, padding: space.md, marginTop: space.md, marginBottom: space.md },
-  whyTitle: { color: colors.primaryDark, fontWeight: fontWeight.semibold, fontSize: fontSize.sm, marginBottom: space.xs },
-  whyText: { color: colors.text, fontSize: fontSize.base, lineHeight: lineHeight.snug },
+  citationDate: { marginLeft: "auto", color: c.muted, fontSize: fontSize.sm },
+  citationTitle: { color: c.text, fontWeight: fontWeight.semibold, fontSize: fontSize.lg, lineHeight: lineHeight.normal },
+  citationRef: { color: c.muted, fontSize: fontSize.base, marginTop: space.xs },
+  whyBox: { backgroundColor: c.evidenceBg, borderRadius: radius.sm, padding: space.md, marginTop: space.md, marginBottom: space.md },
+  whyTitle: { color: c.primaryDark, fontWeight: fontWeight.semibold, fontSize: fontSize.sm, marginBottom: space.xs },
+  whyText: { color: c.text, fontSize: fontSize.base, lineHeight: lineHeight.snug },
 
-  muted: { color: colors.muted, fontSize: fontSize.md, textAlign: "center" },
-  error: { color: colors.nayText, marginTop: space.md },
-});
+  muted: { color: c.muted, fontSize: fontSize.md, textAlign: "center" },
+  error: { color: c.nayText, marginTop: space.md },
+  });
+}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -11,9 +11,11 @@ import {
 import { useRouter } from "expo-router";
 import { searchMembers, type Member } from "../lib/api";
 import { matchStates } from "../lib/usStates";
-import { colors, space, radius, fontSize, fontWeight, shadow, maxWidth } from "../lib/theme";
+import { space, radius, fontSize, fontWeight, maxWidth, makeShadow, type Palette } from "../lib/theme";
+import { useTheme } from "../lib/theme-context";
 import { useWideLayout } from "../lib/useWideLayout";
 import { AuthButton } from "../components/AuthButton";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 const CHAMBERS = [
   { key: "", label: "All" },
@@ -25,6 +27,8 @@ const CHAMBERS = [
 export default function Home() {
   const router = useRouter();
   const wide = useWideLayout(720);
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [q, setQ] = useState("");
   const [state, setState] = useState("");
@@ -113,6 +117,7 @@ export default function Home() {
     >
       <View style={styles.shell}>
         <View style={styles.topBar}>
+          <ThemeToggle />
           <AuthButton />
         </View>
         <Text style={styles.title}>Political Voting Record Analyzer</Text>
@@ -257,23 +262,25 @@ function roleLabel(role: string): string {
   return role;
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: Palette) {
+  const sh = makeShadow(c);
+  return StyleSheet.create({
   page: { paddingHorizontal: space.lg, paddingBottom: space.huge, alignItems: "center" },
   shell: { width: "100%", maxWidth: maxWidth.default, alignSelf: "center" },
   topBar: { flexDirection: "row", justifyContent: "flex-end", marginBottom: space.xs, minHeight: 36 },
-  title: { fontSize: fontSize.h1, fontWeight: fontWeight.bold, color: colors.title, textAlign: "center", letterSpacing: -0.5 },
-  subtitle: { fontSize: fontSize.xl, color: colors.subtitle, textAlign: "center", marginTop: space.sm, marginBottom: space.xxl },
+  title: { fontSize: fontSize.h1, fontWeight: fontWeight.bold, color: c.title, textAlign: "center", letterSpacing: -0.5 },
+  subtitle: { fontSize: fontSize.xl, color: c.subtitle, textAlign: "center", marginTop: space.sm, marginBottom: space.xxl },
   searchCard: {
-    backgroundColor: colors.card,
+    backgroundColor: c.card,
     borderRadius: radius.lg,
     padding: space.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     // Lift the whole card (and its floating dropdowns) above the info card /
     // results that follow it as siblings, so autocomplete overlays them.
     position: "relative",
     zIndex: 50,
-    ...shadow.raised,
+    ...sh.raised,
   },
   // zIndex ordering so the name dropdown floats above the filter row.
   zTop: { zIndex: 30 },
@@ -290,40 +297,40 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 2,
   },
-  clearBtnText: { fontSize: 22, lineHeight: 24, color: colors.muted, fontWeight: fontWeight.medium },
+  clearBtnText: { fontSize: 22, lineHeight: 24, color: c.muted, fontWeight: fontWeight.medium },
   input: {
-    backgroundColor: "#fff",
+    backgroundColor: c.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     borderRadius: radius.md,
     paddingHorizontal: space.lg,
     paddingVertical: space.md,
     fontSize: fontSize.xl,
-    color: colors.text,
+    color: c.text,
   },
   searchBtn: {
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     paddingHorizontal: space.xxl,
     paddingVertical: space.md,
     borderRadius: radius.md,
     alignItems: "center",
   },
-  searchBtnText: { color: "#fff", fontWeight: fontWeight.semibold, fontSize: fontSize.xl },
+  searchBtnText: { color: c.onPrimary, fontWeight: fontWeight.semibold, fontSize: fontSize.xl },
   filterRow: { flexDirection: "row", alignItems: "center", gap: space.sm, marginTop: space.md, flexWrap: "wrap" },
-  chip: { paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.pill, backgroundColor: "#eef2ff" },
-  chipActive: { backgroundColor: colors.primary },
-  chipText: { color: colors.primaryDark, fontWeight: fontWeight.medium, fontSize: fontSize.base },
-  chipTextActive: { color: "#fff" },
+  chip: { paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.pill, backgroundColor: c.evidenceBg },
+  chipActive: { backgroundColor: c.primary },
+  chipText: { color: c.primaryDark, fontWeight: fontWeight.medium, fontSize: fontSize.base },
+  chipTextActive: { color: c.onPrimary },
   stateWrap: { position: "relative", flex: 1, minWidth: 140 },
   stateInput: {
-    backgroundColor: "#fff",
+    backgroundColor: c.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     borderRadius: radius.pill,
     paddingHorizontal: space.md,
     paddingVertical: space.sm,
     fontSize: fontSize.base,
-    color: colors.text,
+    color: c.text,
   },
   // Floating autocomplete panel
   dropdown: {
@@ -332,47 +339,48 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     marginTop: space.sm,
-    backgroundColor: "#fff",
+    backgroundColor: c.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     borderRadius: radius.md,
     paddingVertical: space.xs,
     maxHeight: 300,
     overflow: "hidden",
     zIndex: 100,
-    ...shadow.dropdown,
+    ...sh.dropdown,
   },
   acItem: { paddingHorizontal: space.md, paddingVertical: space.md },
-  acItemHover: { backgroundColor: colors.evidenceBg },
-  acName: { color: colors.title, fontWeight: fontWeight.semibold, fontSize: fontSize.lg },
-  acMeta: { color: colors.muted, fontSize: fontSize.base, marginTop: space.xs },
-  acEmpty: { color: colors.muted, paddingHorizontal: space.md, paddingVertical: space.md },
-  billsLink: { alignSelf: "center", marginTop: space.md, paddingHorizontal: space.lg, paddingVertical: space.md, borderRadius: radius.pill, backgroundColor: "#eef2ff" },
-  billsLinkText: { color: colors.primaryDark, fontWeight: fontWeight.semibold, fontSize: fontSize.md },
+  acItemHover: { backgroundColor: c.evidenceBg },
+  acName: { color: c.title, fontWeight: fontWeight.semibold, fontSize: fontSize.lg },
+  acMeta: { color: c.muted, fontSize: fontSize.base, marginTop: space.xs },
+  acEmpty: { color: c.muted, paddingHorizontal: space.md, paddingVertical: space.md },
+  billsLink: { alignSelf: "center", marginTop: space.md, paddingHorizontal: space.lg, paddingVertical: space.md, borderRadius: radius.pill, backgroundColor: c.evidenceBg },
+  billsLinkText: { color: c.primaryDark, fontWeight: fontWeight.semibold, fontSize: fontSize.md },
   infoCard: {
-    backgroundColor: colors.card,
+    backgroundColor: c.card,
     borderRadius: radius.lg,
     padding: space.xxl,
     marginTop: space.xl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     alignItems: "center",
   },
-  infoText: { color: colors.text, fontSize: fontSize.xl, textAlign: "center" },
-  footer: { color: colors.muted, fontSize: fontSize.base, marginTop: space.md, textAlign: "center" },
-  error: { color: colors.nayText, marginTop: space.lg, textAlign: "center" },
-  empty: { color: colors.muted, marginTop: space.xxl, textAlign: "center" },
+  infoText: { color: c.text, fontSize: fontSize.xl, textAlign: "center" },
+  footer: { color: c.muted, fontSize: fontSize.base, marginTop: space.md, textAlign: "center" },
+  error: { color: c.nayText, marginTop: space.lg, textAlign: "center" },
+  empty: { color: c.muted, marginTop: space.xxl, textAlign: "center" },
   resultCard: {
-    backgroundColor: colors.card,
+    backgroundColor: c.card,
     borderRadius: radius.md,
     padding: space.lg,
     marginTop: space.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     flexDirection: "row",
     alignItems: "center",
   },
-  resultName: { fontSize: fontSize.xxl, fontWeight: fontWeight.semibold, color: colors.title },
-  resultMeta: { color: colors.muted, marginTop: space.xs },
-  chevron: { fontSize: 26, color: colors.primary, fontWeight: "300" },
-});
+  resultName: { fontSize: fontSize.xxl, fontWeight: fontWeight.semibold, color: c.title },
+  resultMeta: { color: c.muted, marginTop: space.xs },
+  chevron: { fontSize: 26, color: c.primary, fontWeight: "300" },
+  });
+}
