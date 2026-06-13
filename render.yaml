@@ -1,0 +1,51 @@
+# Render Blueprint — deploys the whole app (backend + frontend) on the free tier.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# In Render: New > Blueprint > connect this repo. Render reads this file and
+# creates both services. Fill the env vars marked `sync: false` in the dashboard.
+#
+# NOTE: the frontend bakes in the backend URL at build time (EXPO_PUBLIC_API_URL
+# below). It assumes the API service gets https://policy-app-api.onrender.com.
+# If Render assigns a different hostname, update that value and redeploy the web
+# service. See DEPLOY.md.
+services:
+  # ---- Backend: Express + better-sqlite3 + sqlite-vec + Gemini RAG ----
+  - type: web
+    name: policy-app-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install && node scripts/fetch-db.mjs
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Free, instant: https://api.congress.gov/sign-up/
+      - key: CONGRESS_GOV_API_KEY
+        sync: false
+      # Free tier: https://aistudio.google.com/app/apikey
+      - key: GEMINI_API_KEY
+        sync: false
+      # Generated once by Render; signs app session JWTs.
+      - key: JWT_SECRET
+        generateValue: true
+      # URL of the policy.db release asset (see DEPLOY.md). Leave blank to boot
+      # with an empty database.
+      - key: DB_DOWNLOAD_URL
+        sync: false
+
+  # ---- Frontend: Expo static web export ----
+  - type: web
+    name: policy-app-web
+    runtime: static
+    buildCommand: npm install && npx expo export --platform web
+    staticPublishPath: dist
+    envVars:
+      - key: EXPO_PUBLIC_API_URL
+        value: https://policy-app-api.onrender.com
+    routes:
+      # SPA fallback so deep links / dynamic routes ([id]) resolve client-side.
+      - type: rewrite
+        source: /*
+        destination: /index.html
