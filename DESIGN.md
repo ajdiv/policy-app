@@ -135,8 +135,11 @@ Highest-leverage changes, roughly in order:
    custom font (load via `expo-font`) — the app currently uses the platform default.
 4. **Elevation & shape language.** Tune the `shadow` presets; a makeover might flatten to bordered
    cards or introduce a stronger 2-tier elevation contrast.
-5. **Dark mode.** `app.json` already sets `userInterfaceStyle: "automatic"`, but the palette is
-   light-only. A dark theme means a parallel `colors` set + a `useColorScheme()` switch.
+5. **Dark mode.** ✅ Implemented. `lib/theme.ts` ships `lightColors` + `darkColors` (one `Palette`
+   shape); `lib/theme-context.tsx` picks the active palette from the OS (`useColorScheme`) plus a
+   persisted toggle override; components read it via `useTheme()` and build styles with
+   `makeStyles(colors)`. The sun/moon `ThemeToggle` sits top-right. Tune the dark values in
+   `darkColors`.
 
 ### Suggested screens to mock up
 Landing/search, search results, **member profile** (two-column: record + AI), **bill detail**

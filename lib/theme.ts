@@ -1,8 +1,83 @@
-// Shared design tokens. Colors are the primary makeover lever; the spacing,
-// radius, type, and shadow scales below make the rest of the system tweakable
-// from one place. See DESIGN.md for how these map to the UI.
-export const colors = {
-  bgGradient: ["#eef2ff", "#f7f8ff", "#ffffff"] as const,
+// Shared design tokens. Colors come in two palettes (light/dark); everything
+// else (spacing, radius, type) is theme-independent. Components read the active
+// palette via useTheme() (lib/theme-context) and build styles with makeStyles().
+// See DESIGN.md. Dark values mirror the design system's [data-theme="dark"] scope.
+
+/** Every color the UI references, in one shape so light/dark stay in sync. */
+export interface Palette {
+  bgGradient: readonly [string, string, string];
+
+  // Brand & surface
+  primary: string;
+  primaryDark: string;
+  title: string;
+  subtitle: string;
+  text: string;
+  muted: string;
+  card: string;
+  border: string;
+  borderStrong: string;
+  evidenceBg: string;
+  onPrimary: string;
+
+  // Indigo-tinted elevation
+  shadow: string;
+  shadowFloating: string;
+  shadowFab: string;
+
+  // Semantic — vote cast
+  yeaBg: string;
+  yeaText: string;
+  nayBg: string;
+  nayText: string;
+  neutralBg: string;
+  neutralText: string;
+
+  // Semantic — note / mixed
+  noteBg: string;
+  noteBorder: string;
+  noteText: string;
+
+  // Semantic — partisan temperature
+  tempPartylineBar: string;
+  tempPartylineBg: string;
+  tempPartylineText: string;
+  tempLeansBar: string;
+  tempLeansBg: string;
+  tempLeansText: string;
+  tempMostlyBar: string;
+  tempMostlyBg: string;
+  tempMostlyText: string;
+  tempBipartisanBar: string;
+  tempBipartisanBg: string;
+  tempBipartisanText: string;
+
+  // Party affiliation
+  partyDemBg: string;
+  partyDemText: string;
+  partyRepBg: string;
+  partyRepText: string;
+  partyIndBg: string;
+  partyIndText: string;
+  partyDemBar: string;
+  partyRepBar: string;
+
+  // Legislation kind badge
+  kindSponsoredBg: string;
+  kindSponsoredText: string;
+  kindCosponsoredBg: string;
+  kindCosponsoredText: string;
+
+  // Misc surfaces
+  track: string;
+  aiBubble: string;
+  chatHeader: string;
+  summaryBg: string;
+}
+
+export const lightColors: Palette = {
+  bgGradient: ["#eef2ff", "#f7f8ff", "#ffffff"],
+
   primary: "#4f46e5",
   primaryDark: "#3730a3",
   title: "#312e81",
@@ -11,7 +86,13 @@ export const colors = {
   muted: "#6b7280",
   card: "#ffffff",
   border: "#e7e8f0",
+  borderStrong: "#dfe3f3",
+  evidenceBg: "#eef2ff",
+  onPrimary: "#ffffff",
+
   shadow: "rgba(49,46,129,0.08)",
+  shadowFloating: "rgba(49,46,129,0.30)",
+  shadowFab: "rgba(49,46,129,0.45)",
 
   yeaBg: "#dcfce7",
   yeaText: "#15803d",
@@ -24,7 +105,100 @@ export const colors = {
   noteBorder: "#fde68a",
   noteText: "#92400e",
 
-  evidenceBg: "#eef2ff",
+  tempPartylineBar: "#ef4444",
+  tempPartylineBg: "#fee2e2",
+  tempPartylineText: "#b91c1c",
+  tempLeansBar: "#f97316",
+  tempLeansBg: "#ffedd5",
+  tempLeansText: "#c2410c",
+  tempMostlyBar: "#14b8a6",
+  tempMostlyBg: "#ccfbf1",
+  tempMostlyText: "#0f766e",
+  tempBipartisanBar: "#22c55e",
+  tempBipartisanBg: "#dcfce7",
+  tempBipartisanText: "#15803d",
+
+  partyDemBg: "#dbeafe",
+  partyDemText: "#1d4ed8",
+  partyRepBg: "#fee2e2",
+  partyRepText: "#b91c1c",
+  partyIndBg: "#e5e7eb",
+  partyIndText: "#4b5563",
+  partyDemBar: "#1d4ed8",
+  partyRepBar: "#b91c1c",
+
+  kindSponsoredBg: "#e0e7ff",
+  kindSponsoredText: "#4338ca",
+  kindCosponsoredBg: "#f3f4f6",
+  kindCosponsoredText: "#6b7280",
+
+  track: "#eef0f5",
+  aiBubble: "#f4f6fb",
+  chatHeader: "#fafbff",
+  summaryBg: "#f7f8fc",
+};
+
+export const darkColors: Palette = {
+  bgGradient: ["#1a1830", "#161424", "#100e18"],
+
+  primary: "#6366f1",
+  primaryDark: "#a5b4fc",
+  title: "#e8ebff",
+  subtitle: "#a5b4fc",
+  text: "#e5e7eb",
+  muted: "#9aa1b2",
+  card: "#1e1b2e",
+  border: "#322e48",
+  borderStrong: "#3b3658",
+  evidenceBg: "#272338",
+  onPrimary: "#ffffff",
+
+  shadow: "rgba(0,0,0,0.45)",
+  shadowFloating: "rgba(0,0,0,0.60)",
+  shadowFab: "rgba(79,70,229,0.50)",
+
+  yeaBg: "#15321f",
+  yeaText: "#4ade80",
+  nayBg: "#3a1d22",
+  nayText: "#f87171",
+  neutralBg: "#2d2b3a",
+  neutralText: "#cbd5e1",
+
+  noteBg: "#2e2614",
+  noteBorder: "#5c4a1f",
+  noteText: "#fcd34d",
+
+  tempPartylineBar: "#ef4444",
+  tempPartylineBg: "#3a1d22",
+  tempPartylineText: "#f87171",
+  tempLeansBar: "#f97316",
+  tempLeansBg: "#3a2614",
+  tempLeansText: "#fb923c",
+  tempMostlyBar: "#14b8a6",
+  tempMostlyBg: "#0f2e2b",
+  tempMostlyText: "#2dd4bf",
+  tempBipartisanBar: "#22c55e",
+  tempBipartisanBg: "#15321f",
+  tempBipartisanText: "#4ade80",
+
+  partyDemBg: "#1c2a4a",
+  partyDemText: "#93c5fd",
+  partyRepBg: "#3a1d22",
+  partyRepText: "#f87171",
+  partyIndBg: "#2d2b3a",
+  partyIndText: "#cbd5e1",
+  partyDemBar: "#3b82f6",
+  partyRepBar: "#ef4444",
+
+  kindSponsoredBg: "#2a2550",
+  kindSponsoredText: "#c7d2fe",
+  kindCosponsoredBg: "#26242f",
+  kindCosponsoredText: "#9aa1b2",
+
+  track: "#2a2740",
+  aiBubble: "#232032",
+  chatHeader: "#1a1828",
+  summaryBg: "#232032",
 };
 
 /** Spacing scale — 4px grid. Use for padding / margin / gap. */
@@ -85,15 +259,6 @@ export const lineHeight = {
   display: 30,
 } as const;
 
-/** Elevation presets (indigo-tinted soft shadows). Spread into a style object. */
-export const shadow = {
-  card: { shadowColor: colors.shadow, shadowOpacity: 1, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
-  raised: { shadowColor: colors.shadow, shadowOpacity: 1, shadowRadius: 28, shadowOffset: { width: 0, height: 12 }, elevation: 12 },
-  dropdown: { shadowColor: colors.shadow, shadowOpacity: 1, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
-  floating: { shadowColor: "rgba(49,46,129,0.3)", shadowOpacity: 1, shadowRadius: 30, shadowOffset: { width: 0, height: 16 }, elevation: 16 },
-  fab: { shadowColor: "rgba(49,46,129,0.45)", shadowOpacity: 1, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
-} as const;
-
 /** Content shell max-widths per screen role. */
 export const maxWidth = {
   narrow: 820,
@@ -101,24 +266,42 @@ export const maxWidth = {
   wide: 1080,
 } as const;
 
+/** Elevation presets, tinted by the active palette. Spread into a style. */
+export function makeShadow(c: Palette) {
+  return {
+    card: { shadowColor: c.shadow, shadowOpacity: 1, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+    raised: { shadowColor: c.shadow, shadowOpacity: 1, shadowRadius: 28, shadowOffset: { width: 0, height: 12 }, elevation: 12 },
+    dropdown: { shadowColor: c.shadow, shadowOpacity: 1, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+    floating: { shadowColor: c.shadowFloating, shadowOpacity: 1, shadowRadius: 30, shadowOffset: { width: 0, height: 16 }, elevation: 16 },
+    fab: { shadowColor: c.shadowFab, shadowOpacity: 1, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
+  } as const;
+}
+
 /** Color for a stance label. */
-export function stanceColors(label: string): { bg: string; text: string } {
-  if (/support/i.test(label)) return { bg: colors.yeaBg, text: colors.yeaText };
-  if (/oppos/i.test(label)) return { bg: colors.nayBg, text: colors.nayText };
-  return { bg: colors.noteBg, text: colors.noteText }; // mixed / unclear
+export function stanceColors(c: Palette, label: string): { bg: string; text: string } {
+  if (/support/i.test(label)) return { bg: c.yeaBg, text: c.yeaText };
+  if (/oppos/i.test(label)) return { bg: c.nayBg, text: c.nayText };
+  return { bg: c.noteBg, text: c.noteText }; // mixed / unclear
 }
 
 /** Colors for a partisan-temperature label (party-line → bipartisan). */
-export function tempColors(label: string): { bg: string; text: string; bar: string } {
-  if (/party-line/i.test(label)) return { bg: "#fee2e2", text: "#b91c1c", bar: "#ef4444" };
-  if (/leans/i.test(label)) return { bg: "#ffedd5", text: "#c2410c", bar: "#f97316" };
-  if (/mostly bipartisan/i.test(label)) return { bg: "#ccfbf1", text: "#0f766e", bar: "#14b8a6" };
-  return { bg: "#dcfce7", text: "#15803d", bar: "#22c55e" }; // bipartisan
+export function tempColors(c: Palette, label: string): { bg: string; text: string; bar: string } {
+  if (/party-line/i.test(label)) return { bg: c.tempPartylineBg, text: c.tempPartylineText, bar: c.tempPartylineBar };
+  if (/leans/i.test(label)) return { bg: c.tempLeansBg, text: c.tempLeansText, bar: c.tempLeansBar };
+  if (/mostly bipartisan/i.test(label)) return { bg: c.tempMostlyBg, text: c.tempMostlyText, bar: c.tempMostlyBar };
+  return { bg: c.tempBipartisanBg, text: c.tempBipartisanText, bar: c.tempBipartisanBar }; // bipartisan
 }
 
 /** Color for a vote cast (Yea/Nay/other). */
-export function castColors(cast?: string): { bg: string; text: string } {
-  if (cast === "Yea") return { bg: colors.yeaBg, text: colors.yeaText };
-  if (cast === "Nay") return { bg: colors.nayBg, text: colors.nayText };
-  return { bg: colors.neutralBg, text: colors.neutralText };
+export function castColors(c: Palette, cast?: string): { bg: string; text: string } {
+  if (cast === "Yea") return { bg: c.yeaBg, text: c.yeaText };
+  if (cast === "Nay") return { bg: c.nayBg, text: c.nayText };
+  return { bg: c.neutralBg, text: c.neutralText };
+}
+
+/** Color for a party affiliation (D/R/other). */
+export function partyColor(c: Palette, party: string): { bg: string; text: string } {
+  if (/^D/i.test(party)) return { bg: c.partyDemBg, text: c.partyDemText };
+  if (/^R/i.test(party)) return { bg: c.partyRepBg, text: c.partyRepText };
+  return { bg: c.partyIndBg, text: c.partyIndText };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -10,9 +10,12 @@ import {
 } from "react-native";
 import { useLocalSearchParams, Link, Stack } from "expo-router";
 import { getBill, type BillDetail, type BillVote } from "../../lib/api";
-import { colors, tempColors, castColors, space, radius, fontSize, fontWeight, lineHeight, maxWidth } from "../../lib/theme";
+import { tempColors, castColors, space, radius, fontSize, fontWeight, lineHeight, maxWidth, type Palette } from "../../lib/theme";
+import { useTheme } from "../../lib/theme-context";
 
 export default function BillDetailScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [data, setData] = useState<BillDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,9 +39,48 @@ export default function BillDetailScreen() {
   if (error || !data) return <View style={styles.center}><Text style={styles.err}>{error ?? "Not found."}</Text></View>;
 
   const { bill, temperature: t } = data;
-  const tc = t ? tempColors(t.label) : null;
+  const tc = t ? tempColors(colors, t.label) : null;
   const yeas = data.votes.filter((v) => v.cast === "Yea");
   const nays = data.votes.filter((v) => v.cast === "Nay");
+
+  function PartyBar({ label, yea, nay, color }: { label: string; yea: number; nay: number; color: string }) {
+    const total = yea + nay || 1;
+    return (
+      <View style={{ marginTop: 12 }}>
+        <Text style={styles.partyLabel}>
+          {label}: {yea} Yea · {nay} Nay
+        </Text>
+        <View style={styles.partyTrack}>
+          <View style={{ width: `${(yea / total) * 100}%`, backgroundColor: color, height: "100%" }} />
+        </View>
+      </View>
+    );
+  }
+
+  function VoteGroup({ label, votes }: { label: string; votes: BillVote[] }) {
+    if (votes.length === 0) return null;
+    const cc = castColors(colors, label);
+    return (
+      <View style={{ marginTop: 8 }}>
+        <View style={[styles.voteGroupBadge, { backgroundColor: cc.bg }]}>
+          <Text style={[styles.voteGroupText, { color: cc.text }]}>
+            {label} · {votes.length}
+          </Text>
+        </View>
+        {votes.map((v) => (
+          <Link key={v.id} href={{ pathname: "/members/[id]", params: { id: v.id } }} asChild>
+            <Pressable style={styles.voterRow}>
+              <Text style={styles.voterName}>{v.name}</Text>
+              <Text style={styles.voterMeta}>
+                {v.party ?? ""}
+                {v.state ? ` · ${v.state}` : ""}
+              </Text>
+            </Pressable>
+          </Link>
+        ))}
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.page}>
@@ -96,8 +138,8 @@ export default function BillDetailScreen() {
                 <Text style={styles.scaleEnd}>Bipartisan</Text>
               </View>
 
-              <PartyBar label="Democrats" yea={t.dem.yea} nay={t.dem.nay} color="#1d4ed8" />
-              <PartyBar label="Republicans" yea={t.rep.yea} nay={t.rep.nay} color="#b91c1c" />
+              <PartyBar label="Democrats" yea={t.dem.yea} nay={t.dem.nay} color={colors.partyDemBar} />
+              <PartyBar label="Republicans" yea={t.rep.yea} nay={t.rep.nay} color={colors.partyRepBar} />
             </View>
           ) : (
             <Text style={styles.subtle}>No party breakdown available for this bill's votes.</Text>
@@ -115,8 +157,8 @@ export default function BillDetailScreen() {
                   {rc.date ? ` · ${fmtDate(rc.date)}` : ""}
                 </Text>
                 {rc.temperature ? (
-                  <View style={[styles.tempChipSm, { backgroundColor: tempColors(rc.temperature.label).bg }]}>
-                    <Text style={[styles.tempChipSmText, { color: tempColors(rc.temperature.label).text }]}>
+                  <View style={[styles.tempChipSm, { backgroundColor: tempColors(colors, rc.temperature.label).bg }]}>
+                    <Text style={[styles.tempChipSmText, { color: tempColors(colors, rc.temperature.label).text }]}>
                       {rc.temperature.label}
                     </Text>
                   </View>
@@ -149,85 +191,48 @@ export default function BillDetailScreen() {
   );
 }
 
-function PartyBar({ label, yea, nay, color }: { label: string; yea: number; nay: number; color: string }) {
-  const total = yea + nay || 1;
-  return (
-    <View style={{ marginTop: 12 }}>
-      <Text style={styles.partyLabel}>
-        {label}: {yea} Yea · {nay} Nay
-      </Text>
-      <View style={styles.partyTrack}>
-        <View style={{ width: `${(yea / total) * 100}%`, backgroundColor: color, height: "100%" }} />
-      </View>
-    </View>
-  );
-}
-
-function VoteGroup({ label, votes }: { label: string; votes: BillVote[] }) {
-  if (votes.length === 0) return null;
-  const cc = castColors(label);
-  return (
-    <View style={{ marginTop: 8 }}>
-      <View style={[styles.voteGroupBadge, { backgroundColor: cc.bg }]}>
-        <Text style={[styles.voteGroupText, { color: cc.text }]}>
-          {label} · {votes.length}
-        </Text>
-      </View>
-      {votes.map((v) => (
-        <Link key={v.id} href={{ pathname: "/members/[id]", params: { id: v.id } }} asChild>
-          <Pressable style={styles.voterRow}>
-            <Text style={styles.voterName}>{v.name}</Text>
-            <Text style={styles.voterMeta}>
-              {v.party ?? ""}
-              {v.state ? ` · ${v.state}` : ""}
-            </Text>
-          </Pressable>
-        </Link>
-      ))}
-    </View>
-  );
-}
-
 function fmtDate(d: string): string {
   const dt = new Date(d);
   return isNaN(dt.getTime()) ? d.slice(0, 10) : dt.toLocaleDateString("en-US");
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: Palette) {
+  return StyleSheet.create({
   page: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.mega, alignItems: "center" },
   shell: { width: "100%", maxWidth: maxWidth.narrow, alignSelf: "center" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", padding: space.xl },
-  err: { color: colors.nayText },
-  title: { fontSize: fontSize.h3, fontWeight: fontWeight.bold, color: colors.title, lineHeight: lineHeight.display },
-  meta: { color: colors.muted, marginTop: space.sm, fontSize: fontSize.md },
-  link: { color: colors.primary, fontWeight: fontWeight.semibold, marginTop: space.sm, fontSize: fontSize.md },
+  err: { color: c.nayText },
+  title: { fontSize: fontSize.h3, fontWeight: fontWeight.bold, color: c.title, lineHeight: lineHeight.display },
+  meta: { color: c.muted, marginTop: space.sm, fontSize: fontSize.md },
+  link: { color: c.primary, fontWeight: fontWeight.semibold, marginTop: space.sm, fontSize: fontSize.md },
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: c.card,
     borderRadius: radius.lg,
     padding: space.lg,
     marginTop: space.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   tempHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  cardTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  subtle: { color: colors.muted, fontSize: fontSize.base, marginTop: space.xs },
+  cardTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: c.text },
+  subtle: { color: c.muted, fontSize: fontSize.base, marginTop: space.xs },
   tempChip: { paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.md },
   tempChipText: { fontWeight: fontWeight.semibold, fontSize: fontSize.base },
-  scaleTrack: { height: 10, borderRadius: 5, backgroundColor: "#eef0f5", overflow: "hidden" },
+  scaleTrack: { height: 10, borderRadius: 5, backgroundColor: c.track, overflow: "hidden" },
   scaleFill: { height: "100%", borderRadius: 5 },
   scaleLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: space.xs },
-  scaleEnd: { color: colors.muted, fontSize: fontSize.xs },
-  partyLabel: { color: colors.text, fontSize: fontSize.base, fontWeight: fontWeight.medium },
-  partyTrack: { height: 8, borderRadius: 4, backgroundColor: "#eef0f5", overflow: "hidden", marginTop: space.xs },
-  rcRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: space.sm, borderTopWidth: 1, borderTopColor: colors.border },
-  rcText: { color: colors.text, fontSize: fontSize.base },
+  scaleEnd: { color: c.muted, fontSize: fontSize.xs },
+  partyLabel: { color: c.text, fontSize: fontSize.base, fontWeight: fontWeight.medium },
+  partyTrack: { height: 8, borderRadius: 4, backgroundColor: c.track, overflow: "hidden", marginTop: space.xs },
+  rcRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: space.sm, borderTopWidth: 1, borderTopColor: c.border },
+  rcText: { color: c.text, fontSize: fontSize.base },
   tempChipSm: { paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.md },
   tempChipSmText: { fontWeight: fontWeight.semibold, fontSize: fontSize.xs },
-  toggle: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.md },
+  toggle: { color: c.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.md },
   voteGroupBadge: { alignSelf: "flex-start", paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.md, marginTop: space.sm, marginBottom: space.xs },
   voteGroupText: { fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
-  voterRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: space.sm, borderTopWidth: 1, borderTopColor: colors.border },
-  voterName: { color: colors.title, fontWeight: fontWeight.medium, fontSize: fontSize.md, flexShrink: 1 },
-  voterMeta: { color: colors.muted, fontSize: fontSize.sm, marginLeft: space.sm },
-});
+  voterRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: space.sm, borderTopWidth: 1, borderTopColor: c.border },
+  voterName: { color: c.title, fontWeight: fontWeight.medium, fontSize: fontSize.md, flexShrink: 1 },
+  voterMeta: { color: c.muted, fontSize: fontSize.sm, marginLeft: space.sm },
+  });
+}

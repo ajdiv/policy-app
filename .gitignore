@@ -46,3 +46,6 @@ app-example
 # stray local logs / scratch
 *.log
 _*
+
+# Claude Design handoff bundle (reference only; not part of the app)
+design-package/
