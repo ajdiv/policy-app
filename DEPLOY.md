@@ -56,6 +56,8 @@ To refresh the data later: re-run your ingest locally, then
    - `CONGRESS_GOV_API_KEY`
    - `GEMINI_API_KEY`
    - `DB_DOWNLOAD_URL` — the release asset URL from above
+   - `GOOGLE_CLIENT_ID` / `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` — leave **blank**
+     unless you're enabling sign-in (see *Optional: Google sign-in* below).
    - (`JWT_SECRET` is auto-generated; leave it.)
 5. Click **Apply**. First build takes a few minutes (it compiles native modules
    and downloads the dataset).
@@ -78,12 +80,53 @@ frontend bakes this in at build time, so it must be set before the build.)
 
 ---
 
+## Optional: Google sign-in
+
+The app runs fully without it — the sign-in button stays hidden until a client
+ID is set. To enable it, register a Google OAuth **Web application** client. The
+app uses the implicit (token) flow, so you only need a **client ID — no client
+secret**.
+
+1. **[console.cloud.google.com](https://console.cloud.google.com)** → create or
+   pick a project.
+2. **APIs & Services → OAuth consent screen** → User type **External**. Fill the
+   app name + support email. The app only requests `openid`, `profile`, `email`
+   (non-sensitive — no Google verification needed). Then set **Publishing
+   status**:
+   - **Testing** → only emails you add under *Test users* can sign in (≤100).
+   - **Publish to production** → anyone with a Google account can sign in. Allowed
+     without review since the scopes are basic. Pick this for open testing.
+3. **APIs & Services → Credentials → Create Credentials → OAuth client ID →
+   Web application.** Add:
+
+   **Authorized JavaScript origins** (no path / trailing slash):
+   ```
+   https://policy-app-web.onrender.com
+   http://localhost:8081
+   ```
+   **Authorized redirect URIs** (exact match — keep the trailing slash):
+   ```
+   https://policy-app-web.onrender.com/
+   http://localhost:8081/
+   ```
+   > If sign-in fails with **`redirect_uri_mismatch`**, copy the exact
+   > `redirect_uri` from Google's error page into the list. (`8081` is the Expo
+   > web dev port; older setups use `19006`.)
+4. Copy the **Client ID** (`…apps.googleusercontent.com`). Ignore the secret.
+5. Set the **same** value in both Render services, then **redeploy the web
+   service** (the web var is baked in at build time):
+
+   | Service | Env var |
+   |---------|---------|
+   | `policy-app-api` | `GOOGLE_CLIENT_ID` |
+   | `policy-app-web` | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` |
+
+   For local dev, set the same pair in `server/.env` and the root `.env`.
+
+---
+
 ## Notes
 
-- **Google sign-in is off** for this deploy (no `GOOGLE_CLIENT_ID` set). The app
-  works fully; the sign-in button just stays hidden. To enable it later, create
-  a Google OAuth "Web application" client and set `GOOGLE_CLIENT_ID` on the API
-  plus `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` on the web service (same value).
 - CORS is already open on the backend, so the cross-origin frontend works as-is.
 - The DB is read-only at runtime, so Render's ephemeral disk is fine — the file
   is re-fetched on every build.
