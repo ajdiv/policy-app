@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { ask, type AskResult, type Citation, type ChatTurn } from "../lib/api";
 import { colors, stanceColors, castColors } from "../lib/theme";
+import { useWideLayout } from "../lib/useWideLayout";
 
 const LEGISLATOR_SUGGESTIONS = [
   "What are their views on climate change?",
@@ -35,8 +36,8 @@ interface Exchange {
 }
 
 export function ChatBubble({ memberId, role, name }: { memberId: string; role: string; name: string }) {
-  const { width, height } = useWindowDimensions();
-  const wide = width >= 720;
+  const { height } = useWindowDimensions();
+  const wide = useWideLayout(720);
   const isPresident = role === "president";
 
   const [open, setOpen] = useState(false);

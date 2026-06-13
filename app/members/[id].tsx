@@ -8,7 +8,6 @@ import {
   Linking,
   Image,
   StyleSheet,
-  useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,12 +22,12 @@ import {
 } from "../../lib/api";
 import { colors, castColors } from "../../lib/theme";
 import { ChatBubble } from "../../components/ChatBubble";
+import { useWideLayout } from "../../lib/useWideLayout";
 
 export default function Profile() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const wide = width >= 920;
+  const wide = useWideLayout(920);
 
   const [member, setMember] = useState<Member | null>(null);
   const [recordCount, setRecordCount] = useState(0);

@@ -7,12 +7,12 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { searchMembers, type Member } from "../lib/api";
 import { matchStates } from "../lib/usStates";
 import { colors } from "../lib/theme";
+import { useWideLayout } from "../lib/useWideLayout";
 import { AuthButton } from "../components/AuthButton";
 
 const CHAMBERS = [
@@ -24,8 +24,7 @@ const CHAMBERS = [
 
 export default function Home() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const wide = width >= 720;
+  const wide = useWideLayout(720);
 
   const [q, setQ] = useState("");
   const [state, setState] = useState("");

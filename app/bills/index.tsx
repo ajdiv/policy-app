@@ -7,15 +7,14 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  useWindowDimensions,
 } from "react-native";
 import { Link } from "expo-router";
 import { searchBills, type BillSummary } from "../../lib/api";
 import { colors, tempColors } from "../../lib/theme";
+import { useWideLayout } from "../../lib/useWideLayout";
 
 export default function BillsExplorer() {
-  const { width } = useWindowDimensions();
-  const wide = width >= 720;
+  const wide = useWideLayout(720);
   const [q, setQ] = useState("");
   const [bills, setBills] = useState<BillSummary[]>([]);
   const [loading, setLoading] = useState(false);
