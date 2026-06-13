@@ -21,6 +21,12 @@ This is **two separate apps** that must both run during development:
 
 The client finds the backend via `EXPO_PUBLIC_API_URL` (defaults to `http://localhost:3000`).
 
+## Git workflow
+
+**Never commit or push directly to `main`.** Always create a feature branch
+(`git checkout -b <name>`), commit there, and open a PR. (A local PreToolUse hook
+enforces this by blocking `git commit`/`git push` while on `main`.)
+
 ## Commands
 
 **Client** (run from repo root):
