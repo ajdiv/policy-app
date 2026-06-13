@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, Link, Stack } from "expo-router";
 import { getBill, type BillDetail, type BillVote } from "../../lib/api";
-import { colors, tempColors, castColors } from "../../lib/theme";
+import { colors, tempColors, castColors, space, radius, fontSize, fontWeight, lineHeight, maxWidth } from "../../lib/theme";
 
 export default function BillDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -194,40 +194,40 @@ function fmtDate(d: string): string {
 }
 
 const styles = StyleSheet.create({
-  page: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 64, alignItems: "center" },
-  shell: { width: "100%", maxWidth: 820, alignSelf: "center" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
+  page: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.mega, alignItems: "center" },
+  shell: { width: "100%", maxWidth: maxWidth.narrow, alignSelf: "center" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", padding: space.xl },
   err: { color: colors.nayText },
-  title: { fontSize: 24, fontWeight: "800", color: colors.title, lineHeight: 30 },
-  meta: { color: colors.muted, marginTop: 6, fontSize: 14 },
-  link: { color: colors.primary, fontWeight: "700", marginTop: 8, fontSize: 14 },
+  title: { fontSize: fontSize.h3, fontWeight: fontWeight.bold, color: colors.title, lineHeight: lineHeight.display },
+  meta: { color: colors.muted, marginTop: space.sm, fontSize: fontSize.md },
+  link: { color: colors.primary, fontWeight: fontWeight.semibold, marginTop: space.sm, fontSize: fontSize.md },
   card: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 18,
-    marginTop: 16,
+    borderRadius: radius.lg,
+    padding: space.lg,
+    marginTop: space.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
   tempHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  cardTitle: { fontSize: 16, fontWeight: "800", color: colors.text },
-  subtle: { color: colors.muted, fontSize: 13, marginTop: 4 },
-  tempChip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 14 },
-  tempChipText: { fontWeight: "700", fontSize: 13 },
+  cardTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+  subtle: { color: colors.muted, fontSize: fontSize.base, marginTop: space.xs },
+  tempChip: { paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.md },
+  tempChipText: { fontWeight: fontWeight.semibold, fontSize: fontSize.base },
   scaleTrack: { height: 10, borderRadius: 5, backgroundColor: "#eef0f5", overflow: "hidden" },
   scaleFill: { height: "100%", borderRadius: 5 },
-  scaleLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: 4 },
-  scaleEnd: { color: colors.muted, fontSize: 11 },
-  partyLabel: { color: colors.text, fontSize: 13, fontWeight: "600" },
-  partyTrack: { height: 8, borderRadius: 4, backgroundColor: "#eef0f5", overflow: "hidden", marginTop: 4 },
-  rcRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.border },
-  rcText: { color: colors.text, fontSize: 13 },
-  tempChipSm: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-  tempChipSmText: { fontWeight: "700", fontSize: 11 },
-  toggle: { color: colors.primary, fontWeight: "700", fontSize: 14 },
-  voteGroupBadge: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10, marginTop: 6, marginBottom: 4 },
-  voteGroupText: { fontWeight: "700", fontSize: 12 },
-  voterRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.border },
-  voterName: { color: colors.title, fontWeight: "600", fontSize: 14, flexShrink: 1 },
-  voterMeta: { color: colors.muted, fontSize: 12, marginLeft: 8 },
+  scaleLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: space.xs },
+  scaleEnd: { color: colors.muted, fontSize: fontSize.xs },
+  partyLabel: { color: colors.text, fontSize: fontSize.base, fontWeight: fontWeight.medium },
+  partyTrack: { height: 8, borderRadius: 4, backgroundColor: "#eef0f5", overflow: "hidden", marginTop: space.xs },
+  rcRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: space.sm, borderTopWidth: 1, borderTopColor: colors.border },
+  rcText: { color: colors.text, fontSize: fontSize.base },
+  tempChipSm: { paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.md },
+  tempChipSmText: { fontWeight: fontWeight.semibold, fontSize: fontSize.xs },
+  toggle: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.md },
+  voteGroupBadge: { alignSelf: "flex-start", paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.md, marginTop: space.sm, marginBottom: space.xs },
+  voteGroupText: { fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
+  voterRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: space.sm, borderTopWidth: 1, borderTopColor: colors.border },
+  voterName: { color: colors.title, fontWeight: fontWeight.medium, fontSize: fontSize.md, flexShrink: 1 },
+  voterMeta: { color: colors.muted, fontSize: fontSize.sm, marginLeft: space.sm },
 });

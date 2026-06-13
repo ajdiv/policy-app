@@ -1,4 +1,6 @@
-// Shared visual tokens, matching the indigo/white design language of the mockups.
+// Shared design tokens. Colors are the primary makeover lever; the spacing,
+// radius, type, and shadow scales below make the rest of the system tweakable
+// from one place. See DESIGN.md for how these map to the UI.
 export const colors = {
   bgGradient: ["#eef2ff", "#f7f8ff", "#ffffff"] as const,
   primary: "#4f46e5",
@@ -24,6 +26,80 @@ export const colors = {
 
   evidenceBg: "#eef2ff",
 };
+
+/** Spacing scale — 4px grid. Use for padding / margin / gap. */
+export const space = {
+  none: 0,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
+  huge: 48,
+  mega: 64,
+  giant: 96,
+} as const;
+
+/** Corner-radius scale. `pill` = fully rounded chips/buttons. Circular avatars
+ *  and dots set borderRadius to half their fixed size directly (not from here). */
+export const radius = {
+  none: 0,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  pill: 999,
+} as const;
+
+/** Font sizes (kept 1:1 with the original design — not snapped). */
+export const fontSize = {
+  xs: 11,
+  sm: 12,
+  base: 13,
+  md: 14,
+  lg: 15,
+  xl: 16,
+  xxl: 17,
+  xxxl: 18,
+  h3: 24,
+  h2: 30,
+  h1: 34,
+  display: 36,
+} as const;
+
+/** Font weights (React Native string literals). */
+export const fontWeight = {
+  medium: "600",
+  semibold: "700",
+  bold: "800",
+} as const;
+
+/** Absolute line heights, paired with the sizes above. */
+export const lineHeight = {
+  tight: 17,
+  snug: 19,
+  normal: 21,
+  relaxed: 23,
+  display: 30,
+} as const;
+
+/** Elevation presets (indigo-tinted soft shadows). Spread into a style object. */
+export const shadow = {
+  card: { shadowColor: colors.shadow, shadowOpacity: 1, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+  raised: { shadowColor: colors.shadow, shadowOpacity: 1, shadowRadius: 28, shadowOffset: { width: 0, height: 12 }, elevation: 12 },
+  dropdown: { shadowColor: colors.shadow, shadowOpacity: 1, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+  floating: { shadowColor: "rgba(49,46,129,0.3)", shadowOpacity: 1, shadowRadius: 30, shadowOffset: { width: 0, height: 16 }, elevation: 16 },
+  fab: { shadowColor: "rgba(49,46,129,0.45)", shadowOpacity: 1, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
+} as const;
+
+/** Content shell max-widths per screen role. */
+export const maxWidth = {
+  narrow: 820,
+  default: 860,
+  wide: 1080,
+} as const;
 
 /** Color for a stance label. */
 export function stanceColors(label: string): { bg: string; text: string } {

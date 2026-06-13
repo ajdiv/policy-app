@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Link } from "expo-router";
 import { searchBills, type BillSummary } from "../../lib/api";
-import { colors, tempColors } from "../../lib/theme";
+import { colors, tempColors, space, radius, fontSize, fontWeight, lineHeight, maxWidth } from "../../lib/theme";
 import { useWideLayout } from "../../lib/useWideLayout";
 
 export default function BillsExplorer() {
@@ -95,39 +95,39 @@ export default function BillsExplorer() {
 }
 
 const styles = StyleSheet.create({
-  page: { paddingHorizontal: 16, paddingBottom: 48, alignItems: "center" },
-  shell: { width: "100%", maxWidth: 860, alignSelf: "center" },
-  title: { fontSize: 30, fontWeight: "800", color: colors.title, textAlign: "center" },
-  subtitle: { fontSize: 15, color: colors.subtitle, textAlign: "center", marginTop: 6, marginBottom: 18 },
+  page: { paddingHorizontal: space.lg, paddingBottom: space.huge, alignItems: "center" },
+  shell: { width: "100%", maxWidth: maxWidth.default, alignSelf: "center" },
+  title: { fontSize: fontSize.h2, fontWeight: fontWeight.bold, color: colors.title, textAlign: "center" },
+  subtitle: { fontSize: fontSize.lg, color: colors.subtitle, textAlign: "center", marginTop: space.sm, marginBottom: space.lg },
   searchCard: {
     backgroundColor: colors.card,
-    borderRadius: 18,
-    padding: 16,
+    borderRadius: radius.lg,
+    padding: space.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  searchRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  searchRow: { flexDirection: "row", alignItems: "center", gap: space.md },
   input: {
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
+    borderRadius: radius.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    fontSize: fontSize.xl,
     color: colors.text,
   },
-  searchBtn: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, alignItems: "center" },
-  searchBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  infoCard: { backgroundColor: colors.card, borderRadius: 16, padding: 24, marginTop: 18, borderWidth: 1, borderColor: colors.border, alignItems: "center" },
-  infoText: { color: colors.text, fontSize: 15, textAlign: "center" },
-  error: { color: colors.nayText, marginTop: 16, textAlign: "center" },
-  empty: { color: colors.muted, marginTop: 24, textAlign: "center" },
-  card: { backgroundColor: colors.card, borderRadius: 14, padding: 16, marginTop: 12, borderWidth: 1, borderColor: colors.border },
-  billTitle: { fontSize: 16, fontWeight: "700", color: colors.title, lineHeight: 21 },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" },
-  billRef: { color: colors.muted, fontSize: 13 },
-  result: { color: colors.text, fontSize: 12, fontWeight: "700" },
-  tempChip: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, marginLeft: "auto" },
-  tempChipText: { fontWeight: "700", fontSize: 12 },
+  searchBtn: { backgroundColor: colors.primary, paddingHorizontal: space.xxl, paddingVertical: space.md, borderRadius: radius.md, alignItems: "center" },
+  searchBtnText: { color: "#fff", fontWeight: fontWeight.semibold, fontSize: fontSize.xl },
+  infoCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: space.xxl, marginTop: space.lg, borderWidth: 1, borderColor: colors.border, alignItems: "center" },
+  infoText: { color: colors.text, fontSize: fontSize.lg, textAlign: "center" },
+  error: { color: colors.nayText, marginTop: space.lg, textAlign: "center" },
+  empty: { color: colors.muted, marginTop: space.xxl, textAlign: "center" },
+  card: { backgroundColor: colors.card, borderRadius: radius.md, padding: space.lg, marginTop: space.md, borderWidth: 1, borderColor: colors.border },
+  billTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.semibold, color: colors.title, lineHeight: lineHeight.normal },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: space.md, marginTop: space.sm, flexWrap: "wrap" },
+  billRef: { color: colors.muted, fontSize: fontSize.base },
+  result: { color: colors.text, fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
+  tempChip: { paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.md, marginLeft: "auto" },
+  tempChipText: { fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
 });

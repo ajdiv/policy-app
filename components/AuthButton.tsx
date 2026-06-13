@@ -1,6 +1,6 @@
 import { Text, View, Pressable, Image, StyleSheet } from "react-native";
 import { useAuth } from "../lib/auth";
-import { colors } from "../lib/theme";
+import { colors, space, radius, fontSize, fontWeight } from "../lib/theme";
 
 /** Header control: "Sign in with Google" when logged out; an avatar/name pill with a Sign out action when logged in. */
 export function AuthButton() {
@@ -35,30 +35,30 @@ const styles = StyleSheet.create({
   signInBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: space.sm,
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
   },
-  signInText: { color: colors.primaryDark, fontWeight: "700", fontSize: 13 },
+  signInText: { color: colors.primaryDark, fontWeight: fontWeight.semibold, fontSize: fontSize.base },
 
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: space.sm,
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 22,
-    paddingLeft: 5,
-    paddingRight: 14,
-    paddingVertical: 5,
+    borderRadius: radius.pill,
+    paddingLeft: space.xs,
+    paddingRight: space.md,
+    paddingVertical: space.xs,
   },
   avatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#eef2ff" },
   avatarFallback: { alignItems: "center", justifyContent: "center" },
-  avatarText: { color: colors.primary, fontWeight: "800", fontSize: 13 },
-  signOut: { color: colors.primary, fontWeight: "700", fontSize: 13 },
+  avatarText: { color: colors.primary, fontWeight: fontWeight.bold, fontSize: fontSize.base },
+  signOut: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.base },
 });

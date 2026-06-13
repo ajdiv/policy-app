@@ -2,7 +2,7 @@ import { Stack, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors } from "../lib/theme";
+import { colors, space } from "../lib/theme";
 import { AuthProvider } from "../lib/auth";
 import { AuthButton } from "../components/AuthButton";
 
@@ -54,5 +54,5 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  homeBtn: { paddingHorizontal: 8, paddingVertical: 6 },
+  homeBtn: { paddingHorizontal: space.sm, paddingVertical: space.sm },
 });
