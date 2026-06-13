@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { loginWithGoogle, type AuthUser } from "./api";
@@ -52,15 +52,48 @@ const AuthContext = createContext<AuthState>({
 
 export const useAuth = () => useContext(AuthContext);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+/**
+ * Holds the Google auth hook. Mounted ONLY when CLIENT_ID is set —
+ * Google.useAuthRequest throws on web if webClientId is undefined, and hooks
+ * can't be called conditionally, so we gate it at the component boundary. It
+ * publishes its prompt fn up via promptRef and reports access tokens via
+ * onAccessToken. Renders nothing.
+ */
+function GoogleAuthBridge({
+  promptRef,
+  onAccessToken,
+}: {
+  promptRef: React.MutableRefObject<(() => void) | null>;
+  onAccessToken: (accessToken: string) => void;
+}) {
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: CLIENT_ID,
     scopes: ["openid", "profile", "email"],
   });
+
+  // Expose the prompt to AuthProvider.signIn (null until the request is ready).
+  useEffect(() => {
+    promptRef.current = request ? () => promptAsync() : null;
+    return () => {
+      promptRef.current = null;
+    };
+  }, [request, promptAsync, promptRef]);
+
+  // Hand a successful sign-in's access token back to AuthProvider.
+  useEffect(() => {
+    if (response?.type !== "success") return;
+    const accessToken = response.authentication?.accessToken;
+    if (accessToken) onAccessToken(accessToken);
+  }, [response, onAccessToken]);
+
+  return null;
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const promptRef = useRef<(() => void) | null>(null);
 
   // Restore a persisted session on load.
   useEffect(() => {
@@ -74,11 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Handle the Google sign-in result → exchange for an app session.
-  useEffect(() => {
-    if (response?.type !== "success") return;
-    const accessToken = response.authentication?.accessToken;
-    if (!accessToken) return;
+  // Exchange a Google access token for an app session.
+  const handleAccessToken = useCallback((accessToken: string) => {
     setBusy(true);
     setError(null);
     loginWithGoogle(accessToken)
@@ -89,10 +119,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch((e) => setError(e.message ?? "Sign-in failed"))
       .finally(() => setBusy(false));
-  }, [response]);
+  }, []);
 
   const signIn = () => {
-    if (request) promptAsync();
+    if (!CLIENT_ID) {
+      setError("Sign-in is not configured.");
+      return;
+    }
+    promptRef.current?.();
   };
   const signOut = () => {
     setUser(null);
@@ -102,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, configured: !!CLIENT_ID, busy, error, signIn, signOut }}>
+      {CLIENT_ID ? <GoogleAuthBridge promptRef={promptRef} onAccessToken={handleAccessToken} /> : null}
       {children}
     </AuthContext.Provider>
   );
